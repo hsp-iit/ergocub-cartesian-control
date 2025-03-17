@@ -85,6 +85,8 @@ jobs:
         git clone https://github.com/robotology/yarp
         cd ${GITHUB_WORKSPACE}
         git clone https://github.com/robotology/icub-main
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/robotology/idyntree
 
     - name: Dependencies from source [Linux&macOS]
       if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
@@ -111,6 +113,15 @@ jobs:
         cmake --build . --config ${{ matrix.build_type }}
         cmake --install . --config ${{ matrix.build_type }}
 
+        cd ${GITHUB_WORKSPACE}
+        cd idyntree
+        mkdir build
+        cd build
+        cmake -G"Ninja" -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library \
+                                        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+        cmake --build . --config ${{ matrix.build_type }}
+        cmake --install . --config ${{ matrix.build_type }}
+        
     - name: Dependencies from source [Windows]
       if: contains(matrix.os, 'windows')
       shell: bash -l {0}
@@ -119,6 +130,8 @@ jobs:
         git clone https://github.com/robotology/yarp
         cd ${GITHUB_WORKSPACE}
         git clone https://github.com/robotology/icub-main
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/robotology/idyntree
         
         cd ${GITHUB_WORKSPACE}
         cd yarp
@@ -134,6 +147,15 @@ jobs:
  
         cd ${GITHUB_WORKSPACE}
         cd icub-main
+        mkdir build
+        cd build
+        cmake -G"Visual Studio 17 2022" -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library \
+                                        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+        cmake --build . --config ${{ matrix.build_type }}
+        cmake --install . --config ${{ matrix.build_type }}
+
+        cd ${GITHUB_WORKSPACE}
+        cd idyntree
         mkdir build
         cd build
         cmake -G"Visual Studio 17 2022" -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library \
