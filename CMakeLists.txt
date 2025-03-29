@@ -28,6 +28,7 @@ add_subdirectory(src/ergocub_cartesian_service)
 
 # Add module
 add_subdirectory(src/ergocub_cartesian_control)
+add_subdirectory(src/r1_cartesian_control)
 
 
 # Add standard uninstall target
