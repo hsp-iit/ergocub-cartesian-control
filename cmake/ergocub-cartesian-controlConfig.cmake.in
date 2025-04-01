@@ -1,0 +1,29 @@
+@PACKAGE_INIT@
+
+# Declare the components
+set(_supported_components
+    utils
+    cub-joint-control
+    trajectory-generator
+    gb-ergocub-cartesian-service
+)
+
+# Handle components
+foreach(_comp ${@PROJECT_NAME@_FIND_COMPONENTS})
+    if(NOT _comp IN_LIST _supported_components)
+        set(@PROJECT_NAME@_FOUND FALSE)
+        set(@PROJECT_NAME@_NOTFOUND_MESSAGE "Unsupported component: ${_comp}")
+        return()
+    endif()
+    
+    # Include the component's config file if it exists
+    include(${CMAKE_CURRENT_LIST_DIR}/${_comp}Config.cmake OPTIONAL)
+    
+    # Include component targets
+    include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake OPTIONAL)
+endforeach()
+
+# Check dependencies
+include(CMakeFindDependencyMacro)
+find_dependency(YARP COMPONENTS dev os)
+find_dependency(Eigen3)

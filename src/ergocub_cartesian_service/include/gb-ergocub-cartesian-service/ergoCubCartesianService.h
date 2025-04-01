@@ -22,9 +22,15 @@ public:
     // Constructor
     ergoCubCartesianService();
 
-    virtual bool go_to_pose(const yarp::sig::Matrix& pose, const double traj_duration);
+    virtual bool go_to_pose(const double x, const double y, const double z, const double q_x, const double q_y, const double q_z, const double q_w, const double traj_duration);
 
     virtual bool go_to_position(const double x, const double y, const double z, const double traj_duration);
+
+    virtual bool rotate_rad(const double angle, const double x, const double y, const double z, const double traj_duration);
+
+    virtual bool rotate_deg(const double angle, const double x, const double y, const double z, const double traj_duration);
+
+    virtual yarp::sig::Matrix get_pose();
 
     virtual bool go_home();
 
