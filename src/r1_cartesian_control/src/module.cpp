@@ -199,11 +199,13 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         std::vector<std::string> list_joints = utils::loadVectorString(ARM_bot, "joint_axes_list");
 
         /* Get robot urdf path. */
-        std::string robot_urdf_path = rf.findFileByName("model.urdf");
-        robot_urdf_path = "/home/user/study-r1-ergomorphing/R1Mk3/robots/R1Mk3Gazebo/model.urdf";
+        const std::string robot_urdf_path = rf.findFileByName("model.urdf");
+        
         if (robot_urdf_path.empty())
         {
-            yError() << module_name_ + "::configure. Error: cannot load the robot urdf path. Please chack that the YARP_ROBOT_NAME environment variable is set.";
+            yError() << module_name_ + "::configure. Error: cannot load the robot urdf path.
+                Please make sure that YARP_ROBOT_NAME environment variable is set.
+                Make sure also that the YARP_ROBOT_NAME is correctly included in YARP_DATA_DIRS search path";
             return false;
         }
 
