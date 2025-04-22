@@ -38,6 +38,8 @@ public:
 
     virtual bool ask_reachability_evaluation(const yarp::sig::Matrix& pose);
 
+    virtual bool is_pose_reachable(const double x, const double y, const double z, const double q_x, const double q_y, const double q_z, const double q_w);
+
     virtual yarp::sig::Matrix retrieve_reachable_pose();
 
     virtual bool stop();
