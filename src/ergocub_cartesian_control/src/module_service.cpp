@@ -111,6 +111,20 @@ bool Module::ask_reachability_evaluation(const yarp::sig::Matrix &pose)
     return true;
 }
 
+bool Module::is_pose_reachable(const double x, const double y, const double z, const double q_x, const double q_y, const double q_z, const double q_w)
+{
+    if (getState() != State::Stop)
+        return false;
+
+    Eigen::Affine3d target_pose;
+    target_pose = Eigen::Translation3d(x, y, z);
+    target_pose.rotate(Eigen::Quaterniond(q_w, q_x, q_y, q_z));
+
+    serviceTrajInit(true, target_pose, getDuration());
+
+    return true;
+}
+
 yarp::sig::Matrix Module::retrieve_reachable_pose()
 {
     yarp::sig::Matrix reachability_result;

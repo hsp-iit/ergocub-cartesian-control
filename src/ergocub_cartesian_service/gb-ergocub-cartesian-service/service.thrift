@@ -29,6 +29,8 @@ service ergoCubCartesianService
 
     bool ask_reachability_evaluation(1: YARPMatrix pose);
 
+    bool is_pose_reachable(1: double x, 2: double y, 3: double z, 4: double q_x, 5: double q_y, 6: double q_z, 7: double q_w);
+
     YARPMatrix retrieve_reachable_pose();
 
     bool stop();
