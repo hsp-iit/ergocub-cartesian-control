@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     /* Load configuration file. */
     yarp::os::ResourceFinder rf;
     rf.setVerbose(false);
-    rf.setDefaultContext("gb-ergocub-cartesian-controller");
+    rf.setDefaultContext("r1-cartesian-control");
     rf.setDefaultConfigFile("config_right.ini");
     rf.configure(argc, argv);
 
