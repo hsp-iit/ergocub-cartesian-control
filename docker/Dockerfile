@@ -26,7 +26,10 @@ RUN apt update && \
 
 # Install additional dependencies for the robotology superbuild
 RUN apt update && \
-    git clone https://github.com/robotology/robotology-superbuild && cd robotology-superbuild && git checkout v2025.02.2 && bash scripts/install_apt_dependencies.sh && \
+    git clone https://github.com/robotology/robotology-superbuild && \
+    cd robotology-superbuild && \
+    git checkout v2025.02.0 && \
+    bash scripts/install_apt_dependencies.sh && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf ../robotology-superbuild
 
@@ -49,14 +52,12 @@ RUN git clone https://github.com/robotology/robotology-superbuild && \
     cmake -DROBOTOLOGY_ENABLE_CORE=ON -DROBOTOLOGY_ENABLE_DYNAMICS=ON -DROBOTOLOGY_ENABLE_DYNAMICS_FULL_DEPS=ON ../ && \
     make -j$NJOBS
 
-# Install resolve-robotics-uri-py
-RUN python3 -m pip install resolve-robotics-uri-py
-
-# Setup robotoogy superbuild
+# Setup robotology superbuild
 RUN echo "source /home/user/robotology-superbuild/build/install/share/robotology-superbuild/setup.sh" >> /home/user/.bashrc
 
 # Clone and build ergocub-cartesian-control
-RUN git clone https://github.com/hsp-iit/ergocub-cartesian-control && \
+RUN source /home/user/robotology-superbuild/build/install/share/robotology-superbuild/setup.sh && \
+    git clone https://github.com/hsp-iit/ergocub-cartesian-control && \
     cd ergocub-cartesian-control && \
     mkdir build && cd build && \
     cmake ../ && \
