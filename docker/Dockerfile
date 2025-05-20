@@ -60,8 +60,9 @@ RUN source /home/user/robotology-superbuild/build/install/share/robotology-super
     git clone https://github.com/hsp-iit/ergocub-cartesian-control && \
     cd ergocub-cartesian-control && \
     mkdir build && cd build && \
-    cmake ../ && \
-    make -j$NJOBS
+    cmake -DCMAKE_INSTALL_PREFIX="/home/user/robotology-superbuild/build/install/" ../ && \
+    make -j$NJOBS && \
+    make install
 
 # Launch bash from /home/user
 WORKDIR /home/user
