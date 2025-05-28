@@ -15,7 +15,6 @@ namespace utils
     Eigen::VectorXd loadVectorInt(const yarp::os::Bottle& rf, const std::string& key);
     Eigen::VectorXd loadVectorDouble(const yarp::os::Bottle& rf, const std::string& key);
     std::vector<std::string> loadVectorString(const yarp::os::Bottle& rf, const std::string& key);
-    double evaluateReachabilityScore(const Eigen::Transform<double, 3, Eigen::Affine>& target_pose, const Eigen::Transform<double, 3, Eigen::Affine>& reachable_pose, const double position_threshold, const double orientation_threshold);
 }
 
 
@@ -62,15 +61,5 @@ Eigen::VectorXd utils::loadVectorDouble(const yarp::os::Bottle& bottle, const st
  * @return A std::vector<std::string> containing the extracted vector.
  */
 std::vector<std::string> utils::loadVectorString(const yarp::os::Bottle& bottle, const std::string& key);
-
-/**
- * Given a set of target and reachable end-effector poses, it returns a score consisting in
- * the rotational error between the two poses in the range [0, 1], if the positional error and the orientation error is below a given threshold.
- * Otherwise, the score gets assigned a maximu value of std::numeric_limits<double>::infinity().
- * @param target_pose A Eigen::Transform<double, 3, Eigen::Affine> containing the target pose of the end-effector.
- * @param reachable_pose A Eigen::Transform<double, 3, Eigen::Affine> containing the reachable pose of the end-effector.
- * @return The score as a double.
- */
-double utils::evaluateReachabilityScore(const Eigen::Transform<double, 3, Eigen::Affine>& target_pose, const Eigen::Transform<double, 3, Eigen::Affine>& reachable_pose, const double position_threshold, const double orientation_threshold);
 
 #endif

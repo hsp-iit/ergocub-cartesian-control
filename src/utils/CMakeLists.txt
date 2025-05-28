@@ -21,7 +21,7 @@ add_library(${LIBRARY_TARGET_NAME} STATIC ${${LIBRARY_TARGET_NAME}_SRC} ${${LIBR
 # Library properties
 set_target_properties(${LIBRARY_TARGET_NAME} PROPERTIES 
     VERSION       ${${PROJECT_NAME}_VERSION}
-    PUBLIC_HEADER "${headers}"
+    PUBLIC_HEADER "${${LIBRARY_TARGET_NAME}_HDR}"
     EXPORT_NAME ${LIBRARY_TARGET_NAME}  # Set consistent export name
 )
 
