@@ -57,26 +57,3 @@ std::vector<std::string> utils::loadVectorString(const yarp::os::Bottle& bottle,
 
     return vector;
 }
-
-
-double utils::evaluateReachabilityScore(const Eigen::Transform<double, 3, Eigen::Affine>& target_pose, const Eigen::Transform<double, 3, Eigen::Affine>& reachable_pose, const double position_threshold, const double orientation_threshold)
-{
-    /*  Evaluate the rotational error as the norm of the "vee" of the logarithm of the error matrix between target_pose.rotation and reacheable_pose.rotation.
-        Such a metric provides values in [0, pi]
-        References: https://arxiv.org/pdf/1812.01537.pdf, Fig. 6 (for the "vee" operator)
-                    https://www.cs.cmu.edu/~cga/dynopt/readings/Rmetric.pdf, Eq. 23 (for the rotational error definition)
-        */
-    Eigen::Matrix3d error = target_pose.rotation() * reachable_pose.rotation().transpose();
-    Eigen::Vector3d vee_of_log = Eigen::AngleAxisd(error).axis() * Eigen::AngleAxisd(error).angle();
-    double rotational_error = vee_of_log.norm();
-
-    if ((target_pose.translation() - reachable_pose.translation()).norm() < position_threshold && rotational_error < orientation_threshold)
-    {
-        /* Divide by pi to obtain the score in [0, 1]*/
-        return rotational_error / M_PI;
-    }
-    else
-    {
-        return std::numeric_limits<double>::infinity();
-    }
-}
