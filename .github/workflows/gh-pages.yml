@@ -1,8 +1,8 @@
-name: ci 
+name: gh-pages
+description: Deploys the documentation to GitHub Pages using mkdocs-material.
 on:
   push:
     branches:
-      - master 
       - main
 permissions:
   contents: write

@@ -1,4 +1,34 @@
-site_name: My Docs
-site_url: https://github.com/hsp-iit/ergocub-cartesian-control
+site_name: ergoCub Cartesian Control
+site_url: https://hsp-iit.github.io/ergocub-cartesian-control/
 theme:
   name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+  language: en
+
+nav:
+  - Home: index.md
+  - Control Interface: ControlInterface.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - attr_list
+  - md_in_html
