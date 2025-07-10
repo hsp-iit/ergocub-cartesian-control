@@ -19,7 +19,7 @@ set(${LIBRARY_TARGET_NAME}_SRC
 add_library(${LIBRARY_TARGET_NAME} STATIC ${${LIBRARY_TARGET_NAME}_SRC} ${${LIBRARY_TARGET_NAME}_HDR})
 
 # Library properties
-set_target_properties(${LIBRARY_TARGET_NAME} PROPERTIES 
+set_target_properties(${LIBRARY_TARGET_NAME} PROPERTIES
     VERSION       ${${PROJECT_NAME}_VERSION}
     PUBLIC_HEADER "${${LIBRARY_TARGET_NAME}_HDR}"
     EXPORT_NAME   cub-joint-control  # Set consistent export name
@@ -30,17 +30,17 @@ target_include_directories(${LIBRARY_TARGET_NAME} PUBLIC "$<BUILD_INTERFACE:${CM
                                                          "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>")
 
 # Linker configuration
-target_link_libraries(${LIBRARY_TARGET_NAME} PUBLIC YARP::YARP_os YARP::YARP_dev YARP::YARP_sig Eigen3::Eigen 
+target_link_libraries(${LIBRARY_TARGET_NAME} PUBLIC YARP::YARP_os YARP::YARP_dev YARP::YARP_sig Eigen3::Eigen
                                              PRIVATE utils)
 
-             
+
 # Install the headers explicitly to ensure they're available
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.h"
 )
-                                             
+
 
 # Export the target to a different export set than the one used for installation
 install(TARGETS ${LIBRARY_TARGET_NAME}

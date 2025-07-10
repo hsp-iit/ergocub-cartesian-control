@@ -49,7 +49,7 @@ target_link_libraries(${EXE_TARGET_NAME} PRIVATE
                                          YARP::YARP_os
                                          YARP::YARP_sig
                                          YARP::YARP_eigen
-                                         Eigen3::Eigen 
+                                         Eigen3::Eigen
                                          ${iDynTree_LIBRARIES}
                                          proxsuite::proxsuite
                                          gb-ergocub-cartesian-service

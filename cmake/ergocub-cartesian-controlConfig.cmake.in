@@ -15,10 +15,10 @@ foreach(_comp ${@PROJECT_NAME@_FIND_COMPONENTS})
         set(@PROJECT_NAME@_NOTFOUND_MESSAGE "Unsupported component: ${_comp}")
         return()
     endif()
-    
+
     # Include the component's config file if it exists
     include(${CMAKE_CURRENT_LIST_DIR}/${_comp}Config.cmake OPTIONAL)
-    
+
     # Include component targets
     include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake OPTIONAL)
 endforeach()

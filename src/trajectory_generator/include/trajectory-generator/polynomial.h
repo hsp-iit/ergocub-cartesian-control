@@ -11,7 +11,7 @@ public:
 
     //set interval [0,length]
     bool setIntervalLength(double length);
-    //set initial and final conditions on the polynomial 
+    //set initial and final conditions on the polynomial
     bool setBoundaryConditions(const Eigen::VectorXd& boundary_conditions);
 
     //(quintic) polynomial evaluated at t

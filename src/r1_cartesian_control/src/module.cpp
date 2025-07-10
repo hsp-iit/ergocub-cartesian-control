@@ -200,7 +200,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
         /* Get robot urdf path. */
         const std::string robot_urdf_path = rf.findFileByName("model.urdf");
-        
+
         if (robot_urdf_path.empty())
         {
             yError() << module_name_ + "::configure. Error: cannot load the robot urdf path. Please make sure that YARP_ROBOT_NAME environment variable is set. Make sure also that the YARP_ROBOT_NAME is correctly included in YARP_DATA_DIRS search path";
@@ -758,7 +758,7 @@ void Module::log()
 
         //desired values
         Eigen::AngleAxisd des_rot ( desired_transform_.rotation());
-        yInfo() << "---------- Desired min-jerk trajectory --------------------------"; 
+        yInfo() << "---------- Desired min-jerk trajectory --------------------------";
         yInfo() << "pos des" << eigenToString(desired_transform_.translation());
         yInfo() << "ori des" << eigenToString(des_rot.axis() * des_rot.angle());
 
@@ -811,7 +811,7 @@ void Module::log()
         yInfo() << "ang err (deg) |norm| [components]" << cur_e_rot_aa.angle() * (180 / M_PI) << "\t" << eigenToString(cur_e_rot);
         yInfo() << "joints cur" << eigenToString(*encoders_);
         yInfo() << "joints err" << eigenToString(integrator_->get_state() - *encoders_);
-        yInfo() << "################################################################"; 
+        yInfo() << "################################################################";
     }
 }
 

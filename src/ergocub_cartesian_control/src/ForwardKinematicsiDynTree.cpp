@@ -65,7 +65,7 @@ void ForwardKinematicsiDynTree::update()
 {
     /* End-effector transform. */
     //chain_.getWorldTransform(ee_frame_idx_, transform_.matrix());
-    chain_.getRelativeTransform(root_frame_idx_, ee_frame_idx_, transform_.matrix()); 
+    chain_.getRelativeTransform(root_frame_idx_, ee_frame_idx_, transform_.matrix());
 
     /* Jacobian. */
     chain_.getRelativeJacobian(root_frame_idx_, ee_frame_idx_, jacobian_);

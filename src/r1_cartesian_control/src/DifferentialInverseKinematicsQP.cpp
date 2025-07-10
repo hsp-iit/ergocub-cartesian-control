@@ -135,7 +135,7 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::eval_reference_v
         const Eigen::MatrixXd des_joints_acc = Eigen::MatrixXd::Zero(joints_.size(), 1);
 
         Eigen::MatrixXd q_joint(joints_.size(), 1);
-        q_joint = joints_vel_ + 
+        q_joint = joints_vel_ +
                   sampling_time_ * (
                                         des_joints_acc +
                                         joint_pos_param_(1) * (joint_ref_ - joints_) +

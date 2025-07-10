@@ -157,17 +157,17 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::eval_reference_v
         const Eigen::MatrixXd des_joints_acc = Eigen::MatrixXd::Zero(joints_.size(), 1);
 
         Eigen::MatrixXd ddq_ref(joints_.size(), 1);
-        
+
         Eigen::MatrixXd JP_1 = joint_pos_param_(1) * Eigen::MatrixXd::Identity(joints_.size(), joints_.size());
         Eigen::MatrixXd JP_2 = joint_pos_param_(2) * Eigen::MatrixXd::Identity(joints_.size(), joints_.size());
 
         // Increment torso roll PD gains in order to prefer other joints motion.
-        JP_1(0,0)*=5; 
-        JP_2(0,0)*=5; 
-        JP_1(1,1)*=5; 
-        JP_2(1,1)*=5; 
-        JP_1(2,2)*=5; 
-        JP_2(2,2)*=5; 
+        JP_1(0,0)*=5;
+        JP_2(0,0)*=5;
+        JP_1(1,1)*=5;
+        JP_2(1,1)*=5;
+        JP_1(2,2)*=5;
+        JP_2(2,2)*=5;
         ddq_ref = des_joints_acc + JP_1 * (joint_ref_ - joints_) + JP_2 * (des_joints_vel - joints_vel_);
 
         ddq_ref *= - 2.0 * joint_pos_param_(0);

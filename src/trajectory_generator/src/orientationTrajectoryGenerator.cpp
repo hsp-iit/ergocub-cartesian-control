@@ -37,7 +37,7 @@ bool OrientationTrajectory::init(   const double duration,
     velocity_ = initial_velocity;
     acceleration_ = initial_acceleration;
     initial_orientation_ = initial_orientation;
-   
+
     // Evaluate direction and magnitude of the initial_velocity
     const double init_v_norm = initial_velocity.norm();
 
@@ -90,7 +90,7 @@ bool OrientationTrajectory::init(   const double duration,
         //Create frame
         v1_ = error_axis;
 
-        if(init_v_norm != 0)   
+        if(init_v_norm != 0)
             v2_ = v1_.cross(init_v_axis);
         else
             v2_ = v1_.cross(init_a_axis);

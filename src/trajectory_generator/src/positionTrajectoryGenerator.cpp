@@ -117,7 +117,7 @@ void PositionTrajectory::step()
     velocity_.x() = polyx_->dt1At(t_);
     velocity_.y() = polyy_->dt1At(t_);
     velocity_.z() = polyz_->dt1At(t_);
-    
+
     // update acceleration
     acceleration_.x() = polyx_->dt2At(t_);
     acceleration_.y() = polyy_->dt2At(t_);

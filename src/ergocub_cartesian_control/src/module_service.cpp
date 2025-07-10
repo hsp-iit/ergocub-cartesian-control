@@ -34,7 +34,7 @@ bool Module::attach(yarp::os::Port &source)
 }
 
 bool Module::go_to_pose(double x, double y, double z, double q_x, double q_y, double q_z, double q_w, double traj_duration)
-{    
+{
     Eigen::Affine3d target_pose;
     target_pose = Eigen::Translation3d(x, y, z);
     target_pose.rotate(Eigen::Quaterniond(q_w, q_x, q_y, q_z));

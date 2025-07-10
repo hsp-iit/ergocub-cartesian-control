@@ -7,12 +7,12 @@ Polynomial::Polynomial(const Eigen::VectorXd& boundary_conditions, const double 
     length_= 0.0;
     coefficients_ = Eigen::VectorXd::Zero(6);
     boundary_conditions_ = Eigen::VectorXd::Zero(6);
-    
+
     if(!setIntervalLength(length))
     {
         throw(std::runtime_error(class_name_ + "::ctor. See error(s) above."));
     }
-    
+
     if(!setBoundaryConditions(boundary_conditions))
     {
         throw(std::runtime_error(class_name_ + "::ctor. See error(s) above."));
@@ -91,7 +91,7 @@ void Polynomial::updateCoefficients()
     boundary_conditions_(2) = dds0
     boundary_conditions_(3) = sf
     boundary_conditions_(4) = dsf
-    boundary_conditions_(5) = ddsf    
+    boundary_conditions_(5) = ddsf
     */
 
     coefficients_(0) = boundary_conditions_(0);

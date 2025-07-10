@@ -822,7 +822,7 @@ void Module::log()
         };
 
         //desired values
-        yInfo() << "---------- Desired min-jerk trajectory --------------------------"; 
+        yInfo() << "---------- Desired min-jerk trajectory --------------------------";
         yInfo() << "pos des" << eigenToString(traj_des_pos);
         yInfo() << "ori des" << eigenToString(traj_des_rot_aa.axis() * traj_des_rot_aa.angle());
         yInfo() <<" ori qua: "<<traj_des_rot_quat.x()<<" "<<traj_des_rot_quat.y()<<" "<<traj_des_rot_quat.z()<<" "<<traj_des_rot_quat.w();
@@ -893,7 +893,7 @@ void Module::log()
         m_vectorsCollectionServer.populateData("qpIK::cartes::pos", eigenToStdVecDouble(qp_pos));
 
         m_vectorsCollectionServer.populateData("qpIK::cartes::ori", eigenToStdVecDouble(qp_rot.eulerAngles(2, 1, 0)));
-    
+
         vec3[0]=qp_manip;
         vec3[1]=qp_max_manip;
         vec3[2]=qp_weight_manip_function;

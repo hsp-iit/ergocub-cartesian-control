@@ -6,8 +6,8 @@ struct YARPMatrix{}
 
 struct ReachabilityEvaluationState
 {
-    1: string status; 
-    
+    1: string status;
+
     2: YARPMatrix reached_pose;
 }
 
