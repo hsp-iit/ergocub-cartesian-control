@@ -194,7 +194,7 @@ foreach my $filename (@files) {
     for (@skip_files) {
         # Skip empty lines
         next if ($_ eq "");
-        
+
         # skip files known to have a broken license
         if ("$filename" eq "$_") {
             $match_filename = 1;
