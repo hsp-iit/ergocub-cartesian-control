@@ -44,22 +44,6 @@ r1-cartesian-control --from config_left.ini
 r1-cartesian-control --from config_right_sim_r1.ini
 ```
 
-## Configuration
-
-TODO: Add complete reference to parameters
-
-### General configuration parameters
-
-```ini
-rate 100.0                              # Control rate in Hz
-traj_duration 5.0                       # Default trajectory duration
-rpc_local_port_name /controller/rpc:i   # RPC command port
-position_error_th 0.0005               # Position convergence threshold
-max_iteration 10000                     # Maximum IK iterations
-module_logging true                     # Enable logging
-module_verbose true                     # Enable verbose output
-```
-
 ## RPC Interface
 
 The controllers expose an RPC interface for sending commands. You can connect to the RPC port and send commands directly.
@@ -210,15 +194,82 @@ client.write(cmd, reply)
 
 ## Coordinate Frames
 
-The controllers work in the robot's base coordinate frame:
+The controllers work in the robot's coordinate frame. Tipically they are directed in the following way:
+
 - **X-axis**: Forward direction of the robot
 - **Y-axis**: Left direction of the robot  
 - **Z-axis**: Upward direction
-- **Origin**: Typically at the robot's base
+- **Origin**: `root_link` for ergoCub and `mobile_base_body_link` for R1
 
-For arm-specific controllers:
-- **Right arm**: Negative Y values are towards the robot's right side
-- **Left arm**: Positive Y values are towards the robot's left side
+
+## Configuration
+
+### General Configuration Parameters
+
+#### Control Parameters
+- **`rate`** (default: `100.0`): Control loop frequency in Hz. Higher values provide smoother control but require more computational resources.
+- **`traj_duration`** (default: `5.0`): Default trajectory duration in seconds when not specified in commands.
+
+#### Communication
+- **`rpc_local_port_name`** (e.g: `/gb-ergocub-cartesian-control/right_arm/rpc:i`): Local YARP port name for RPC communication with the controller.
+
+#### Convergence and Limits
+- **`position_error_th`** (default: `0.0005`): Position convergence threshold in meters. The controller considers a motion complete when the position error is below this value.
+- **`max_iteration`** (default: `10000`): Maximum number of iterations for the inverse kinematics solver before giving up.
+
+#### Debugging and Logging
+- **`module_logging`** (default: `true`): Enable data logging for analysis and debugging.
+- **`module_verbose`** (default: `true`): Enable verbose console output for debugging purposes.
+- **`qp_verbose`** (default: `false`): Enable verbose console output for the QP solver.
+
+### ARM Section Parameters
+
+#### Robot Configuration
+- **`name`** (example: `left_arm`, `right_arm`): Identifier name for the arm being controlled.
+- **`joint_axes_list`** (example: `(torso_yaw_joint l_shoulder_pitch l_shoulder_roll l_shoulder_yaw l_elbow l_wrist_yaw l_wrist_roll l_wrist_pitch)`): Complete ordered list of joint names to control. Order matters for the control algorithm.
+- **`joint_ports_list`** (example: `(/cer/torso /cer/left_arm)`): List of YARP port names for communicating with the robot's joint interfaces.
+- **`joint_local_port`** (example: `/r1-cartesian-control/left_arm`): Local YARP port prefix for this controller instance.
+
+### IK_PARAM Section Parameters
+
+#### Joint Limits and Constraints
+- **`limits_param`** (default: `0.90`): Safety factor for joint limits (0 < value < 1). Reduces effective joint range to avoid hitting limits.
+- **`max_joint_position_variation`** (default: `25.0`): Maximum allowed joint position change per control cycle in degrees.
+- **`max_joint_position_track_error`** (default: `1.5`): Maximum acceptable tracking error between desired and actual joint positions in degrees.
+
+#### Control Weights and Gains
+- **`joint_vel_weight`** (default: `(5.0 0.0)`): Joint velocity cost weight and offset for the QP solver `(weight, offset)`.
+- **`position_param`** (default: `(20.0 0.5)`): Position control parameters `(cost_weight, proportional_gain)`.
+- **`orientation_param`** (default: `(10.0 0.5)`): Orientation control parameters `(cost_weight, proportional_gain)`.
+- **`joint_pos_param`** (default: `(2.5 10.0 5.0)`): Joint position control gains `(cost_weight, proportional_gain, derivative_gain)`.
+
+#### Reference Configuration
+- **`joint_ref`** (example: `(0.0 0.0 0.1 0.0 0.1 0.0 0.0 0.0)`): Reference joint configuration used for null-space projection. Must match the number and order of joints in `joint_axes_list`.
+
+### FK_PARAM Section Parameters
+
+#### Kinematic Chain Definition
+- **`root_frame_name`** (default: `mobile_base_body_link` for R1, `root_link` for ergoCub): Name of the root frame for the kinematic chain.
+- **`ee_frame_name`** (example: `l_hand_palm`, `r_hand_palm`): Name of the end-effector frame that will be controlled.
+
+### FSM_PARAM Section Parameters
+
+#### Finite State Machine
+- **`stop_speed`** (default: `0.001`): Velocity threshold in rad/s for determining when motion has stopped (approximately 0.057 degrees/s).
+
+## Tuning Guidelines
+
+### Performance Tuning
+- **Increase `rate`** for smoother control, but monitor CPU usage
+- **Adjust `position_param` and `orientation_param` weights** to balance position vs orientation tracking
+- **Tune `joint_pos_param`** gains for better joint space control
+
+### Safety Tuning  
+- **Reduce `limits_param`** for additional safety margin from joint limits
+- **Lower `max_joint_position_variation`** for slower, safer motions
+- **Decrease `max_joint_position_track_error`** for stricter tracking requirements
+
+
 
 ## Safety Considerations
 

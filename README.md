@@ -22,6 +22,7 @@ docker build -t hsp/ergocub-cartesian-control:latest .
 #### Dependencies
 
 - `robotology-superbuild` latest build
+- You can also install them with the provided conda environment `environment.yml`
 
 #### Instructions
 

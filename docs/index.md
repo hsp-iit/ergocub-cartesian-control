@@ -17,6 +17,7 @@ We recommend installing the libraries directly on the robot because the control 
 #### Dependencies
 
 - `robotology-superbuild` latest build
+- You can also install them with the provided conda environment `environment.yml`
 
 #### Instructions
 
@@ -117,16 +118,3 @@ find_package(ergocub-cartesian-control REQUIRED)
 set(ergocub-cartesian-control_DIR "/path/to/your/install/prefix/lib/cmake/ergocub-cartesian-control")
 find_package(ergocub-cartesian-control REQUIRED)
 ```
-
-## Project layout
-
-    src/
-        cub_joint_control  # Source code for control in joint position for iCub, ergoCub and R1.
-        r1_cartesian_control # Current controller used by r1 
-        ergocub_cartesian_control # Current controller used by ergoCub
-        ergocub_cartesian_service # Thrift interface definition for the controllers
-        trajectory_generator # Library to generate trajectories
-        utils # Library that provides utility functions
-
-
-# Another section
