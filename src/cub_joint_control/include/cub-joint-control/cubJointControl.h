@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Humanoid Sensing and Perception, Istituto Italiano di Tecnologia
+// SPDX-License-Identifier: BSD-3-Clause
+
 #ifndef CUB_JOINT_CONTROL_H
 #define CUB_JOINT_CONTROL_H
 

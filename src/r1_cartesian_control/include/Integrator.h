@@ -1,9 +1,5 @@
-/*
- * Copyright (C) 2023 Istituto Italiano di Tecnologia (IIT)
- *
- * This software may be modified and distributed under the terms of the
- * MIT license. See the accompanying LICENSE file for details.
- */
+// SPDX-FileCopyrightText: 2025 Humanoid Sensing and Perception, Istituto Italiano di Tecnologia
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef INTEGRATOR_H
 #define INTEGRATOR_H

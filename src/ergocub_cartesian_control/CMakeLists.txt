@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Humanoid Sensing and Perception, Istituto Italiano di Tecnologia
+# SPDX-License-Identifier: BSD-3-Clause
+
 set(EXE_TARGET_NAME gb-ergocub-cartesian-control)
 
 # YARP

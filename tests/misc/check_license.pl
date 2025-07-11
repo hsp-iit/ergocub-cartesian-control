@@ -14,14 +14,14 @@ sub print_if_verbose
 }
 
 
-my @files = `git ls-files src example tests scripts cmake bindings data CMakeLists.txt`;
+my @files = `git ls-files src example tests scripts cmake bindings data CMakeLists.txt Dockerfile`;
 s{^\s+|\s+$}{}g foreach @files;
 
 open my $handle, '<', "tests/misc/check_license_skip.txt";
 chomp(my @skip_files = <$handle>);
 close $handle;
 
-my $copyright_iit = "(2006-2021|2006-2022|2006-2023|2023|2023-2023|2024|2024-2024|2025|2025-2025) Istituto Italiano di Tecnologia \\(IIT\\)";
+my $copyright_iit = "(2006-2021|2006-2022|2006-2023|2023|2023-2023|2024|2024-2024|2025|2025-2025)(?:[^\\n]*)?\\s*Istituto Italiano di Tecnologia(?: \\(IIT\\))?";
 my $copyright_robocub = "2006-2010 RobotCub Consortium";
 
 my $str_bsd3_cpp = <<END;
@@ -31,6 +31,14 @@ my $str_bsd3_cpp = <<END;
  \\* SPDX-FileCopyrightText: [^\n]+)*
  \\* SPDX-License-Identifier: BSD-3-Clause
  \\*/
+
+END
+
+my $str_bsd3_cpp_alt = <<END;
+// SPDX-FileCopyrightText: $copyright_iit(
+// SPDX-FileCopyrightText: $copyright_robocub)?(
+// SPDX-FileCopyrightText: [^\n]+)*
+// SPDX-License-Identifier: BSD-3-Clause
 
 END
 
@@ -184,6 +192,9 @@ foreach my $filename (@files) {
     my $match_filename = 0;
     my $match_dir = 0;
     for (@skip_files) {
+        # Skip empty lines
+        next if ($_ eq "");
+        
         # skip files known to have a broken license
         if ("$filename" eq "$_") {
             $match_filename = 1;
@@ -291,6 +302,21 @@ foreach my $filename (@files) {
     # C++ style BSD-3-Clause
     if ("$txt" =~ /$str_bsd3_cpp/s) {
         if ("$filename" =~ /\.(cpp|cpp.in|c|h|hpp|h.in|thrift|mm|qml|java|cs)$/) {
+            print_if_verbose "[OK - BSD (.$1)] $filename\n";
+            $ok++;
+        } elsif ("$filename" =~ /\/compiler\..+\.in$/) {
+            print_if_verbose "[OK - BSD (compiler.*.in)] $filename\n";
+            $ok++;
+        } else {
+            print "[NOT OK - BSD (c++ style)] $filename\n";
+            $errors++;
+        }
+        next;
+    }
+
+    # Alternative C++ Style BSD-3 Clause
+    if ("$txt" =~ /$str_bsd3_cpp_alt/s) {
+        if ("$filename" =~ /\.(cpp|cpp.in|c|h|hpp|h.in|thrift|)$/) {
             print_if_verbose "[OK - BSD (.$1)] $filename\n";
             $ok++;
         } elsif ("$filename" =~ /\/compiler\..+\.in$/) {

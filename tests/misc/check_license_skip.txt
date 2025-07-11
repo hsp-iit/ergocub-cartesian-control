@@ -1,1 +1,3 @@
-
+cmake/InstallBasicPackageFiles.cmake
+cmake/AddInstallRPATHSupport.cmake
+cmake/AddUninstallTarget.cmake
