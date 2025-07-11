@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 
-my $verbose_output = 0;
+my $verbose_output = 1;
 
 sub print_if_verbose
 {
@@ -21,6 +21,9 @@ s{^\s+|\s+$}{}g foreach @files;
 open my $handle, '<', "tests/misc/check_style_skip.txt";
 chomp(my @skip_files = <$handle>);
 close $handle;
+
+# Remove empty lines from skip_files array
+@skip_files = grep { $_ ne "" } @skip_files;
 
 my $files = 0;
 my $ok = 0;
