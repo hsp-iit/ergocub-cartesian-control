@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2025 Humanoid Sensing and Perception, Istituto Italiano di Tecnologia
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: ergocub_cartesian_control
+channels:
+  - conda-forge
+  - defaults
+  - https://repo.prefix.dev/robotology
+dependencies:
+  - yarp==3.12.0
+  - proxsuite==0.7.2
+  - idyntree==13.4.2
+  - bipedal-locomotion-framework==0.22.0 # for logging

@@ -3,6 +3,8 @@
 
 set(EXE_TARGET_NAME r1-cartesian-control)
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # YARP
 find_package(YARP REQUIRED COMPONENTS
                            dev

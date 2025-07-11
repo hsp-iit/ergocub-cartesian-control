@@ -3,6 +3,8 @@
 
 set(LIBRARY_TARGET_NAME gb-ergocub-cartesian-service)
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # Build a shared library
 option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" ON)
 

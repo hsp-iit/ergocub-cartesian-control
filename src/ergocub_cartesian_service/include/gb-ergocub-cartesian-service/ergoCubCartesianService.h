@@ -13,15 +13,22 @@
 
 #include <yarp/os/Wire.h>
 #include <yarp/os/idl/WireTypes.h>
+#include <yarp/os/ApplicationNetworkProtocolVersion.h>
 #include <yarp/sig/Matrix.h>
 
 class ergoCubCartesianService :
         public yarp::os::Wire
 {
 public:
+    //ProtocolVersion
+    virtual yarp::os::ApplicationNetworkProtocolVersion getLocalProtocolVersion();
+    virtual yarp::os::ApplicationNetworkProtocolVersion getRemoteProtocolVersion();
+    virtual bool checkProtocolVersion();
+
     // Constructor
     ergoCubCartesianService();
 
+    //Service methods
     virtual bool go_to_pose(const double x, const double y, const double z, const double q_x, const double q_y, const double q_z, const double q_w, const double traj_duration);
 
     virtual bool go_to_position(const double x, const double y, const double z, const double traj_duration);

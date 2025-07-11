@@ -3,6 +3,9 @@
 
 set(LIBRARY_TARGET_NAME cub-joint-control)
 
+# Set RPath for the library, especially useful for conda environments
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # YARP
 find_package(YARP REQUIRED COMPONENTS dev os)
 

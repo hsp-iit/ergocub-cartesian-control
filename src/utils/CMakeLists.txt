@@ -3,6 +3,8 @@
 
 set(LIBRARY_TARGET_NAME utils)
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # YARP
 find_package(YARP REQUIRED COMPONENTS idl_tools sig)
 
