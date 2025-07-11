@@ -4,7 +4,6 @@
 name: ergocub_cartesian_control
 channels:
   - conda-forge
-  - defaults
   - https://repo.prefix.dev/robotology
 dependencies:
   - yarp==3.12.0
