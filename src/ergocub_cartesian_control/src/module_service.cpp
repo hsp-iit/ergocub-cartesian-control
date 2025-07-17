@@ -152,6 +152,20 @@ bool Module::stop()
     return true;
 }
 
+bool Module::setJointsMode(const std::string &mode)
+{
+    if (getState() != State::Stop)
+        return false;
+
+    if (!cub_joint_control_.configureJointsMode(mode))
+    {
+        yError() << module_name_ + "::setJointsMode(). Error: Cannot set '" << mode << "' control mode. See the errors above.";
+        return false;
+    }
+
+    return true;
+}
+
 void Module::serviceTrajInit(bool is_reach_eval, const Eigen::Affine3d& target_pose, double traj_duration)
 {
     std::lock_guard<std::mutex> lg(mutex_);

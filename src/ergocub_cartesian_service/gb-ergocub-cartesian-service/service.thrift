@@ -37,4 +37,6 @@ service ergoCubCartesianService
     YARPMatrix retrieve_reachable_pose();
 
     bool stop();
+
+    bool setJointsMode(1: string mode);
 }

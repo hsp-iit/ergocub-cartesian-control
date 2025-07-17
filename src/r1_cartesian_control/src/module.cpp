@@ -427,14 +427,6 @@ bool Module::updateModule()
         }
 
         /* Send the integral to the robot. */
-        if (!cub_joint_control_.configureJointsMode("Streaming"))
-        {
-            yError() << module_name_ + "::updateModule(). Error: Cannot set 'Streaming' control mode. See the errors above.";
-            error_prev_state_ = State::Running;
-            setState(State::Error);
-            return false;
-        }
-
         if (!cub_joint_control_.moveToStreaming(future_ref))
         {
             yError() << module_name_ + "::updateModule(). Error: Cannot set desired joint position reference. See the errors above.";
