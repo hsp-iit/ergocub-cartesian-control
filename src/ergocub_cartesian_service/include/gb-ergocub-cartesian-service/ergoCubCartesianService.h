@@ -51,6 +51,8 @@ public:
 
     virtual bool stop();
 
+    virtual bool setJointsMode(const std::string& mode);
+
     // help method
     virtual std::vector<std::string> help(const std::string& functionName = "--all");
 

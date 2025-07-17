@@ -797,6 +797,69 @@ public:
     static constexpr const char* s_help{""};
 };
 
+// setJointsMode helper class declaration
+class ergoCubCartesianService_setJointsMode_helper :
+        public yarp::os::Portable
+{
+public:
+    ergoCubCartesianService_setJointsMode_helper() = default;
+    explicit ergoCubCartesianService_setJointsMode_helper(const std::string& mode);
+    bool write(yarp::os::ConnectionWriter& connection) const override;
+    bool read(yarp::os::ConnectionReader& connection) override;
+
+    class Command :
+            public yarp::os::idl::WirePortable
+    {
+    public:
+        Command() = default;
+        explicit Command(const std::string& mode);
+
+        ~Command() override = default;
+
+        bool write(yarp::os::ConnectionWriter& connection) const override;
+        bool read(yarp::os::ConnectionReader& connection) override;
+
+        bool write(const yarp::os::idl::WireWriter& writer) const override;
+        bool writeTag(const yarp::os::idl::WireWriter& writer) const;
+        bool writeArgs(const yarp::os::idl::WireWriter& writer) const;
+
+        bool read(yarp::os::idl::WireReader& reader) override;
+        bool readTag(yarp::os::idl::WireReader& reader);
+        bool readArgs(yarp::os::idl::WireReader& reader);
+
+        std::string mode{};
+    };
+
+    class Reply :
+            public yarp::os::idl::WirePortable
+    {
+    public:
+        Reply() = default;
+        ~Reply() override = default;
+
+        bool write(yarp::os::ConnectionWriter& connection) const override;
+        bool read(yarp::os::ConnectionReader& connection) override;
+
+        bool write(const yarp::os::idl::WireWriter& writer) const override;
+        bool read(yarp::os::idl::WireReader& reader) override;
+
+        bool return_helper{false};
+    };
+
+    using funcptr_t = bool (*)(const std::string&);
+    void call(ergoCubCartesianService* ptr);
+
+    Command cmd;
+    Reply reply;
+
+    static constexpr const char* s_tag{"setJointsMode"};
+    static constexpr size_t s_tag_len{1};
+    static constexpr size_t s_cmd_len{2};
+    static constexpr size_t s_reply_len{1};
+    static constexpr const char* s_prototype{"bool ergoCubCartesianService::setJointsMode(const std::string& mode)"};
+    static constexpr const char* s_help{""};
+};
+
 // go_to_pose helper class implementation
 ergoCubCartesianService_go_to_pose_helper::ergoCubCartesianService_go_to_pose_helper(const double x, const double y, const double z, const double q_x, const double q_y, const double q_z, const double q_w, const double traj_duration) :
         cmd{x, y, z, q_x, q_y, q_z, q_w, traj_duration}
@@ -2662,6 +2725,160 @@ void ergoCubCartesianService_stop_helper::call(ergoCubCartesianService* ptr)
     reply.return_helper = ptr->stop();
 }
 
+// setJointsMode helper class implementation
+ergoCubCartesianService_setJointsMode_helper::ergoCubCartesianService_setJointsMode_helper(const std::string& mode) :
+        cmd{mode}
+{
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::write(yarp::os::ConnectionWriter& connection) const
+{
+    return cmd.write(connection);
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::read(yarp::os::ConnectionReader& connection)
+{
+    return reply.read(connection);
+}
+
+ergoCubCartesianService_setJointsMode_helper::Command::Command(const std::string& mode) :
+        mode{mode}
+{
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::write(yarp::os::ConnectionWriter& connection) const
+{
+    yarp::os::idl::WireWriter writer(connection);
+    if (!writer.writeListHeader(s_cmd_len)) {
+        return false;
+    }
+    return write(writer);
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::read(yarp::os::ConnectionReader& connection)
+{
+    yarp::os::idl::WireReader reader(connection);
+    if (!reader.readListHeader()) {
+        reader.fail();
+        return false;
+    }
+    return read(reader);
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::write(const yarp::os::idl::WireWriter& writer) const
+{
+    if (!writeTag(writer)) {
+        return false;
+    }
+    if (!writeArgs(writer)) {
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::writeTag(const yarp::os::idl::WireWriter& writer) const
+{
+    if (!writer.writeTag(s_tag, 1, s_tag_len)) {
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::writeArgs(const yarp::os::idl::WireWriter& writer) const
+{
+    if (!writer.writeString(mode)) {
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::read(yarp::os::idl::WireReader& reader)
+{
+    if (!readTag(reader)) {
+        return false;
+    }
+    if (!readArgs(reader)) {
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::readTag(yarp::os::idl::WireReader& reader)
+{
+    std::string tag = reader.readTag(s_tag_len);
+    if (reader.isError()) {
+        return false;
+    }
+    if (tag != s_tag) {
+        reader.fail();
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Command::readArgs(yarp::os::idl::WireReader& reader)
+{
+    if (reader.noMore()) {
+        reader.fail();
+        return false;
+    }
+    if (!reader.readString(mode)) {
+        reader.fail();
+        return false;
+    }
+    if (!reader.noMore()) {
+        reader.fail();
+        return false;
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Reply::write(yarp::os::ConnectionWriter& connection) const
+{
+    yarp::os::idl::WireWriter writer(connection);
+    return write(writer);
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Reply::read(yarp::os::ConnectionReader& connection)
+{
+    yarp::os::idl::WireReader reader(connection);
+    return read(reader);
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Reply::write(const yarp::os::idl::WireWriter& writer) const
+{
+    if (!writer.isNull()) {
+        if (!writer.writeListHeader(s_reply_len)) {
+            return false;
+        }
+        if (!writer.writeBool(return_helper)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ergoCubCartesianService_setJointsMode_helper::Reply::read(yarp::os::idl::WireReader& reader)
+{
+    if (!reader.readListReturn()) {
+        return false;
+    }
+    if (reader.noMore()) {
+        reader.fail();
+        return false;
+    }
+    if (!reader.readBool(return_helper)) {
+        reader.fail();
+        return false;
+    }
+    return true;
+}
+
+void ergoCubCartesianService_setJointsMode_helper::call(ergoCubCartesianService* ptr)
+{
+    reply.return_helper = ptr->setJointsMode(cmd.mode);
+}
+
 // Constructor
 ergoCubCartesianService::ergoCubCartesianService()
 {
@@ -2778,6 +2995,16 @@ bool ergoCubCartesianService::stop()
     return ok ? helper.reply.return_helper : bool{};
 }
 
+bool ergoCubCartesianService::setJointsMode(const std::string& mode)
+{
+    if (!yarp().canWrite()) {
+        yError("Missing server method '%s'?", ergoCubCartesianService_setJointsMode_helper::s_prototype);
+    }
+    ergoCubCartesianService_setJointsMode_helper helper{mode};
+    bool ok = yarp().write(helper, helper);
+    return ok ? helper.reply.return_helper : bool{};
+}
+
 // help method
 std::vector<std::string> ergoCubCartesianService::help(const std::string& functionName)
 {
@@ -2796,6 +3023,7 @@ std::vector<std::string> ergoCubCartesianService::help(const std::string& functi
         helpString.emplace_back(ergoCubCartesianService_is_pose_reachable_helper::s_tag);
         helpString.emplace_back(ergoCubCartesianService_retrieve_reachable_pose_helper::s_tag);
         helpString.emplace_back(ergoCubCartesianService_stop_helper::s_tag);
+        helpString.emplace_back(ergoCubCartesianService_setJointsMode_helper::s_tag);
         helpString.emplace_back("help");
     } else {
         if (functionName == ergoCubCartesianService_go_to_pose_helper::s_tag) {
@@ -2830,6 +3058,9 @@ std::vector<std::string> ergoCubCartesianService::help(const std::string& functi
         }
         if (functionName == ergoCubCartesianService_stop_helper::s_tag) {
             helpString.emplace_back(ergoCubCartesianService_stop_helper::s_prototype);
+        }
+        if (functionName == ergoCubCartesianService_setJointsMode_helper::s_tag) {
+            helpString.emplace_back(ergoCubCartesianService_setJointsMode_helper::s_prototype);
         }
         if (functionName == "help") {
             helpString.emplace_back("std::vector<std::string> help(const std::string& functionName = \"--all\")");
@@ -3035,6 +3266,21 @@ bool ergoCubCartesianService::read(yarp::os::ConnectionReader& connection)
         }
         if (tag == ergoCubCartesianService_stop_helper::s_tag) {
             ergoCubCartesianService_stop_helper helper;
+            if (!helper.cmd.readArgs(reader)) {
+                return false;
+            }
+
+            helper.call(this);
+
+            yarp::os::idl::WireWriter writer(reader);
+            if (!helper.reply.write(writer)) {
+                return false;
+            }
+            reader.accept();
+            return true;
+        }
+        if (tag == ergoCubCartesianService_setJointsMode_helper::s_tag) {
+            ergoCubCartesianService_setJointsMode_helper helper;
             if (!helper.cmd.readArgs(reader)) {
                 return false;
             }
