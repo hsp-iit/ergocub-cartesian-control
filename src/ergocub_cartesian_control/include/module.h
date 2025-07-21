@@ -66,6 +66,8 @@ public:
 
     bool stop();
 
+    bool setJointsMode(const std::string &mode) override;
+
 private:
     /* Common variables */
     double rate_;
