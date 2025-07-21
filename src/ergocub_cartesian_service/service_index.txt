@@ -1,4 +1,0 @@
-include/gb-ergocub-cartesian-service/ReachabilityEvaluationState.h
-src/ReachabilityEvaluationState.cpp
-include/gb-ergocub-cartesian-service/ergoCubCartesianService.h
-src/ergoCubCartesianService.cpp

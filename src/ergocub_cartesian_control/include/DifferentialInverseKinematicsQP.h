@@ -159,6 +159,8 @@ protected:
         const Eigen::Ref<const Eigen::MatrixXd> &G,
         const Eigen::Ref<const Eigen::VectorXd> &h);
 
+    Eigen::MatrixXd partial_derivative(const Eigen::MatrixXd &J, const unsigned int jointNum);
+
 private:
     Eigen::VectorXd joints_, joints_vel_, joints_lower_limits_, joints_upper_limits_, joints_limits_gains_;
 
