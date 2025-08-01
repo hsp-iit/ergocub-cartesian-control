@@ -132,11 +132,11 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::eval_reference_v
         b = lin_ref;
     }
 
-    /* Introduce joint accelerations term into cost function. */
-    if (joint_acc_weight_(0) > 0.0)
-    {
-        P += Eigen::MatrixXd::Identity(P.rows(), P.cols()) * joint_acc_weight_(0) * weight_manip_function_;
-    }
+    // /* Introduce joint accelerations term into cost function. */
+    // if (joint_acc_weight_(0) > 0.0)
+    // {
+    //     P += Eigen::MatrixXd::Identity(P.rows(), P.cols()) * joint_acc_weight_(0) * weight_manip_function_;
+    // }
 
     /* Introduce joint position control term into cost function. */
     if (joint_pos_param_(0) > 0.0)
@@ -325,7 +325,11 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
             }
     }
 
+
     /*
+    * Implement limits as described in:
+    * Kanoun, Oussama. "Real-time prioritized kinematic control under inequality constraints for redundant manipulators." Robotics: Science and Systems. Vol. 7. 2012.
+    *
     * ddq^ = optimal acceleration.
     * dq^ = ddq^ * dt + dq;
     *  q^ =  dq^ * dt +  q;
@@ -337,14 +341,63 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
     *                       - ddq^ <= - Kl * ((ql - q)/dt - dq)/dt
     */
 
-    Eigen::MatrixXd G_l(joints.size() * 2, joints.size());
-    Eigen::VectorXd h_l(joints.size() * 2);
+    Eigen::MatrixXd G_l(1 + joints.size() * 2, joints.size());
+    Eigen::VectorXd h_l(1 + joints.size() * 2);
 
-    G_l.topRows(joints.size()) = Eigen::MatrixXd::Identity(joints.size(), joints.size());
-    G_l.bottomRows(joints.size()) = -Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    G_l.block(0, 0, joints.size(), joints.size()) = Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    h_l.block(0, 0, joints.size(), 1) =             gains.asDiagonal() * ((joints_upper_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
 
-    h_l.head(joints.size()) = gains.asDiagonal() * ((joints_upper_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
-    h_l.tail(joints.size()) = -1.0 * gains.asDiagonal() * ((joints_lower_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
+    G_l.block(joints.size(), 0, joints.size(), joints.size()) = -Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    h_l.block(joints.size(), 0, joints.size(), 1) =             -1.0 * gains.asDiagonal() * ((joints_lower_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
+
+    /* Maximize manipulability term
+    *
+    * m = sqrt(det(J J^T))
+    *
+    * We impose a constraint on the time derivative of the manipulability measure:
+    *
+    * dm/dt >= - a_m * (m - m*), a_m > 0
+    *
+    * which is equivalent to a LTI system converging to m*. We are solving for the acceleration, so:
+    *
+    * ddq^ = optimal acceleration.
+    * dq^ = ddq^ * dt + dq;
+    * dm^/dt = dm/dq * dq^ = dm/dq * (ddq^ * dt + dq);
+    *
+    * dm^/dt >= - a_m * (m - m*) -> dm/dq * ddq^ * dt >= - a_m * (m^ - m*) - dm/dq * dq
+    *
+    * Let's rearrange the equation:
+    *
+    * (-dm/dq * dt) * ddq^ <= a_m * (m^ - m*) + dm/dq * dq
+    *
+    * Notice that for a_m = 0 we are just imposing that the manipulability measure cannot decrease, which is not the best choice
+    * as we can accept a reduction of the manipulability measure as long as it is necessary to reach some pose.
+    *
+    */
+
+    Eigen::Matrix<double,6,6> JJT = jacobian_ * jacobian_.transpose();
+    double manip = std::sqrt(JJT.determinant());
+
+
+    Eigen::LDLT<Eigen::Matrix<double,6,6>> JJT_ldlt(JJT);
+    Eigen::VectorXd dmdq(joints_.size());
+    for(int i = 0; i < joints_.size(); i++){
+        if(i == 0){dmdq(i) = 0.0;}
+        else{dmdq(i) = manip * (JJT_ldlt.solve( partial_derivative(jacobian_,i)*jacobian_.transpose() )).trace();}
+    }
+
+    double improve_manip_dyn_ = 10.0;
+    const double improve_manip_th_ = 0.0100;
+
+    if (manip <= improve_manip_th_)
+    {
+        std::cout << "\n\n\nmanip <= improve_manip_th_ "<< manip << " <= " << improve_manip_th_ <<"\n\n\n";
+        improve_manip_dyn_= 0.0;
+    }
+
+    G_l.block(2 * joints.size(), 0, 1, joints.size()) = -sampling_time_ * dmdq.transpose();
+    h_l(2 * joints.size()) = improve_manip_dyn_* (manip - improve_manip_th_) + dmdq.dot(joints_vel_);
+
 
     return std::make_tuple(G_l, h_l);
 }
@@ -367,5 +420,47 @@ void addBlockOnDiag(Eigen::MatrixXd &M, const Eigen::MatrixXd &M_add)
         M.bottomRightCorner(M_add.rows(), M_add.cols()) = M_add;
     }
 }
+
+
+Eigen::MatrixXd DifferentialInverseKinematicsQP::partial_derivative(const Eigen::MatrixXd &J, const unsigned int jointNum)
+{
+    /*
+    * J. Haviland, P. Corke - "A Systematic Approach to Computing the Manipulator Jacobian and Hessian using the Elementary Transform Sequence"
+    * IX. THE MANIPULATOR HESSIAN - Eqs. (64) and (67)
+    */
+
+	Eigen::MatrixXd dJ(6,joints_.size());
+
+	for(int i = 0; i < joints_.size(); i++)
+	{
+		if (jointNum < i)
+		{
+			// a_j x (a_i x a_i)
+			dJ(0,i) = J(4,jointNum)*J(2,i) - J(5,jointNum)*J(1,i);
+			dJ(1,i) = J(5,jointNum)*J(0,i) - J(3,jointNum)*J(2,i);
+			dJ(2,i) = J(3,jointNum)*J(1,i) - J(4,jointNum)*J(0,i);
+
+			// a_j x a_i
+			dJ(3,i) = J(4,jointNum)*J(5,i) - J(5,jointNum)*J(4,i);
+			dJ(4,i) = J(5,jointNum)*J(3,i) - J(3,jointNum)*J(5,i);
+			dJ(5,i) = J(3,jointNum)*J(4,i) - J(4,jointNum)*J(3,i);
+		}
+		else
+		{
+			// a_i x (a_j x a_j)
+			dJ(0,i) = J(4,i)*J(2,jointNum) - J(5,i)*J(1,jointNum);
+			dJ(1,i) = J(5,i)*J(0,jointNum) - J(3,i)*J(2,jointNum);
+			dJ(2,i) = J(3,i)*J(1,jointNum) - J(4,i)*J(0,jointNum);
+
+			dJ(3,i) = 0.0;
+			dJ(4,i) = 0.0;
+			dJ(5,i) = 0.0;
+		}
+	}
+
+	return dJ;
+}
+
+
 
 #endif /* DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP */
