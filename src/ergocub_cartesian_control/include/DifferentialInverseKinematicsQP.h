@@ -67,6 +67,11 @@ public:
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
         const Eigen::Ref<const Eigen::VectorXd> &gains) override;
 
+    /* ---- Manipulability gains ---- */
+    void setManipImproveGains(double dyn, double th);
+    double getManipImproveDyn() const { return improve_manip_dyn_; }
+    double getManipImproveTh()  const { return improve_manip_th_;  }
+
 protected:
     /**
      * Implement limits as described in:
@@ -197,10 +202,14 @@ private:
     const Eigen::MatrixXd joint_ref_;
 
     double max_manip_, manip_, weight_manip_function_;
-
+    
+    double improve_manip_dyn_;
+    double improve_manip_th_;
     proxsuite::proxqp::Results<double> old_solution_;
 
     bool verbose_;
+
+    
 
     const std::string class_name_ = "DifferentialInverseKinematicsQP";
 };

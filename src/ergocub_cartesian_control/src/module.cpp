@@ -133,6 +133,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
 
         const double limits_param = IK_PARAM_bot.find("limits_param").asFloat64();
+        double improve_manip_dyn = IK_PARAM_bot.find("improve_manip_dyn").asFloat64();
+        double improve_manip_th = IK_PARAM_bot.find("improve_manip_th").asFloat64();
 
         Eigen::VectorXd joint_acc_weight;
         extractFromBottle(*IK_PARAM_bot.find("joint_acc_weight").asList(), joint_acc_weight);
@@ -188,6 +190,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         /* Set ik solver. */
         ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, qp_verbose);
         ik_->set_joint_limits(lower_limits, upper_limits, limits_param * Eigen::VectorXd::Ones(upper_limits.size()));
+        ik_->setManipImproveGains(improve_manip_dyn, improve_manip_th);
     }
 
     /* Instantiate iDynTree-based forward kinematics. */
