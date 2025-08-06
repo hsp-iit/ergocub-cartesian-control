@@ -159,7 +159,7 @@ private:
     BipedalLocomotion::YarpUtilities::VectorsCollectionServer m_vectorsCollectionServer; /** Logger server. */
 
     /* Thrift service configuration */
-    bool configureService(const yarp::os::ResourceFinder &rf);
+    bool configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name);
 
     /* Helper function for CartesianService */
     void serviceTrajInit(bool is_reach_eval, const Eigen::Affine3d &target_pose, double traj_duration);

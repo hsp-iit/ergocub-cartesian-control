@@ -27,6 +27,8 @@ public:
      * @param joint_pos_param The weight and gain used in the minimization of the QP functional for the joint positions term.
      * @param joint_ref The joint position reference vector.
      * @param verbose To print some info.
+     * @param improve_manip_dyn The dynamic gain for the manipulability improvement.
+     * @param improve_manip_th The threshold for the manipulability improvement
      */
     DifferentialInverseKinematicsQP(
         double sampling_time,
@@ -36,7 +38,9 @@ public:
         const Eigen::MatrixXd &orientation_param,
         const Eigen::VectorXd &joint_pos_param,
         const Eigen::MatrixXd &joint_ref,
-        bool verbose);
+        bool verbose,
+        double improve_manip_dyn,
+        double improve_manip_th);
 
     virtual ~DifferentialInverseKinematicsQP() = default;
 
@@ -67,10 +71,10 @@ public:
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
         const Eigen::Ref<const Eigen::VectorXd> &gains) override;
 
-    /* ---- Manipulability gains ---- */
-    void setManipImproveGains(double dyn, double th);
-    double getManipImproveDyn() const { return improve_manip_dyn_; }
-    double getManipImproveTh()  const { return improve_manip_th_;  }
+    // /* ---- Manipulability gains ---- */
+    // void setManipImproveGains(double dyn, double th);
+    // double getManipImproveDyn() const { return improve_manip_dyn_; }
+    // double getManipImproveTh()  const { return improve_manip_th_;  }
 
 protected:
     /**

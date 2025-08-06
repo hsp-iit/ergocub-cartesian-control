@@ -22,15 +22,22 @@ using namespace std::literals::chrono_literals;
 
 bool Module::configure(yarp::os::ResourceFinder &rf)
 {
-    /* Check for and retrieve mandatory parameters. */
-    if (!(rf.check("rate") && rf.find("rate").isFloat64()))
+    
+    /* Check for and retrieve mandatory groups. */
+    auto groupCheckAndRetrieve = [&](const yarp::os::Searchable &src,
+                                 const std::string           &group_name_in,
+                                 yarp::os::Bottle            &bottle_group_out) -> bool
     {
-        yError() << module_name_ + "::configure(). Error: mandatory parameter 'rate' missing or invalid.";
+    if (!src.check(group_name_in))
+    {
+        yError() << module_name_ + "::configure(). Error: mandatory group "
+                 << group_name_in << " missing.";
         return false;
     }
 
-    rate_ = rf.find("rate").asFloat64();
-    sample_time_ = 1.0 / rate_;
+    bottle_group_out = src.findGroup(group_name_in);  // copia profonda
+    return true;
+    };
 
     /* Check for and retrieve mandatory groups. */
     auto boolCheckAndRetrieve = [&](const yarp::os::ResourceFinder &rf_in, const std::string &param_name_in, bool &bool_out)
@@ -46,44 +53,80 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return true;
     };
 
-    if (!boolCheckAndRetrieve(rf, "module_logging", module_logging_))
-        return false;
-    if (!boolCheckAndRetrieve(rf, "module_verbose", module_verbose_))
-        return false;
-
-    bool qp_verbose;
-    if (!boolCheckAndRetrieve(rf, "qp_verbose", qp_verbose))
+    yarp::os::Bottle COMMON_bot;
+    if (!groupCheckAndRetrieve(rf, "COMMON", COMMON_bot))
         return false;
 
-    /* Check for and retrieve mandatory groups. */
-    auto groupCheckAndRetrieve = [&](const yarp::os::ResourceFinder &rf_in, const std::string &group_name_in, yarp::os::Bottle &bottle_group_out)
+    if  (   !(utils::checkParameters({{"rate", "traj_duration", "position_error_th"}}, "", COMMON_bot, "", utils::ParameterType::Float64, false))
+        ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
+        /*||  !(utils::checkParameters({{"rpc_local_port_name" }}, "", COMMON_bot, "", utils::ParameterType::String, false))*/)
     {
-        if (!rf_in.check(group_name_in))
-        {
-            yError() << module_name_ + "::configure(). Error: mandatory group " + group_name_in + " missing.";
-            return false;
-        }
-
-        bottle_group_out = rf_in.findGroup(group_name_in);
-
-        return true;
-    };
-
-    yarp::os::Bottle ARM_bot;
-    if (!groupCheckAndRetrieve(rf, "ARM", ARM_bot))
+        yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for COMMON group missing or invalid.";
         return false;
+    }
+
+    // Assign values from COMMON_bot to the module variables.
+    sample_time_ = 1.0 / COMMON_bot.find("rate").asFloat64();
+    module_logging_ = COMMON_bot.find("module_logging").asBool();
+    module_verbose_ = COMMON_bot.find("module_verbose").asBool();
+    const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
+    const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
+    double duration = COMMON_bot.find("traj_duration").asFloat64();
+    if (duration < min_traj_duration_)
+    {
+        duration = min_traj_duration_;
+
+        yWarning() << module_name_ + "::go_to_pose(). The requested duration is less than " + std::to_string(min_traj_duration_) + ". It will be enforced to that value.";
+    }
+    setDuration(duration);
+    pos_err_th_ = COMMON_bot.find("position_error_th").asFloat64();
+    if (pos_err_th_ <= 0.0)
+    {
+        yError() << module_name_ + "::configure(). Error: mandatory parameter 'position_error_th' should be greater than 0.0.";
+        return false;
+    }
+    max_iter_ = COMMON_bot.find("max_iteration").asInt32();
+    if (max_iter_ <= 0)
+    {
+        yError() << module_name_ + "::configure(). Error: mandatory parameter 'max_iteration' should be greater than 0.";
+        return false;
+    }
+    
+    //-------------------------------------------
+    //  Log configuration parameters
+    //-------------------------------------------
+    yInfo() << module_name_ << "::configure() ― parameters loaded:"
+            << "\n  sampling_time         : " << sample_time_
+            << "\n  module_logging        : " << std::boolalpha << module_logging_
+            << "\n  module_verbose        : " << std::boolalpha << module_verbose_
+            << "\n  qp_verbose            : " << std::boolalpha << qp_verbose
+            << "\n  rpc_local_port_name   : " << rpc_local_port_name
+            << "\n  traj_duration [s]     : " << duration
+            << "\n  position_error_th [m] : " << max_iter_
+            << "\n  max_iteration         : " << pos_err_th_;
+
+
+
 
     yarp::os::Bottle FK_PARAM_bot;
     if (!groupCheckAndRetrieve(rf, "FK_PARAM", FK_PARAM_bot))
         return false;
 
-    yarp::os::Bottle IK_PARAM_bot;
-    if (!groupCheckAndRetrieve(rf, "IK_PARAM", IK_PARAM_bot))
+    yarp::os::Bottle FSM_PARAM_bot;
+    if (!groupCheckAndRetrieve(COMMON_bot, "FSM_PARAM", FSM_PARAM_bot))
         return false;
 
-    yarp::os::Bottle FSM_PARAM_bot;
-    if (!groupCheckAndRetrieve(rf, "FSM_PARAM", FSM_PARAM_bot))
+    yarp::os::Bottle ARM_bot;
+    if (!groupCheckAndRetrieve(rf, "ARM", ARM_bot))
         return false;
+
+    
+
+    yarp::os::Bottle IK_PARAM_bot;
+    if (!groupCheckAndRetrieve(COMMON_bot, "IK_PARAM", IK_PARAM_bot))
+        return false;
+
+    
 
     /* Instantiate CubJointControl controller. */
     if (!cub_joint_control_.configure(ARM_bot))
@@ -188,9 +231,9 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         ik_joint_acc_ = Eigen::VectorXd::Zero(cub_joint_control_.getNumberJoints());
 
         /* Set ik solver. */
-        ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, qp_verbose);
+        ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, qp_verbose, improve_manip_dyn, improve_manip_th);
         ik_->set_joint_limits(lower_limits, upper_limits, limits_param * Eigen::VectorXd::Ones(upper_limits.size()));
-        ik_->setManipImproveGains(improve_manip_dyn, improve_manip_th);
+        // ik_->setManipImproveGains(improve_manip_dyn, improve_manip_th);
     }
 
     /* Instantiate iDynTree-based forward kinematics. */
@@ -259,23 +302,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     fk_->update();
     setCurrPose(fk_->get_ee_transform());
 
-    /* Trajectory parameters initialization*/
-    if (!(rf.check("traj_duration") && rf.find("traj_duration").isFloat64()))
-    {
-        yError() << module_name_ + "::configure(). Error: mandatory parameter 'traj_duration' missing or invalid.";
-        return false;
-    }
-
-    double duration = rf.find("traj_duration").asFloat64();
-
-    if (duration < min_traj_duration_)
-    {
-        duration = min_traj_duration_;
-
-        yWarning() << module_name_ + "::go_to_pose(). The requested duration is less than " + std::to_string(min_traj_duration_) + ". It will be enforced to that value.";
-    }
-
-    setDuration(duration);
     traj_.init_pose = desired_transform_;
     setTrajFinPose(desired_transform_);
     setTrajIsEnded(true);
@@ -285,7 +311,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     traj_.ang_gen = std::make_unique<OrientationTrajectory>(sample_time_);
     desired_lin_vel_ = Eigen::Vector3d::Zero();
     desired_ang_vel_ = Eigen::Vector3d::Zero();
-
+    
     /* FSM */
     if (!utils::checkParameters({{"stop_vel"}}, "", FSM_PARAM_bot, "", utils::ParameterType::Float64, false))
     {
@@ -297,23 +323,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     setState(State::Stop);
 
-    /* Reachability*/
-    if (!(rf.check("position_error_th") && rf.find("position_error_th").isFloat64() && (rf.find("position_error_th").asFloat64() > 0.0)))
-    {
-        yError() << module_name_ + "::configure(). Error: mandatory parameter 'position_error_th' missing or invalid.";
-        return false;
-    }
-    if (!(rf.check("max_iteration") && rf.find("max_iteration").isInt32() && (rf.find("max_iteration").asInt32() > 0)))
-    {
-        yError() << module_name_ + "::configure(). Error: mandatory parameter 'max_iteration' missing or invalid.";
-        return false;
-    }
-
-    pos_err_th_ = rf.find("position_error_th").asFloat64();
-    max_iter_ = rf.find("max_iteration").asInt32();
-
     /* Configure RPC service. */
-    if (!configureService(rf))
+    if (!configureService(rf, rpc_local_port_name))
     {
         yError() << module_name_ + "::configure(). Error: cannot configure the RPC service.";
         return false;
@@ -378,7 +389,7 @@ bool Module::close()
 
 double Module::getPeriod()
 {
-    return 1.0 / rate_;
+    return sample_time_;
 }
 
 bool Module::interruptModule()
@@ -575,6 +586,12 @@ bool Module::updateModule()
     {
         yWarning() << "**********State::Unknown**********";
     }
+    //-------------------------------------------
+    //  Quick flags overview
+    //-------------------------------------------
+    yInfo() << module_name_ << "::updateModule()  "
+        << "module_logging=" << std::boolalpha << module_logging_
+        << ", module_verbose=" << std::boolalpha << module_verbose_;
 
     if (module_logging_ || module_verbose_)
         log();
