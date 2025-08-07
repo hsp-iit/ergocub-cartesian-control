@@ -32,6 +32,11 @@ add_subdirectory(src/ergocub_cartesian_service)
 # Add module
 add_subdirectory(src/ergocub_cartesian_control)
 add_subdirectory(src/r1_cartesian_control)
+# Add thrift service for bimanual control
+add_subdirectory(src/ergocub_bimanual_service)
+
+# Add bimanual control module
+add_subdirectory(src/ergocub_cartesian_bimanual)
 
 
 # Add standard uninstall target
