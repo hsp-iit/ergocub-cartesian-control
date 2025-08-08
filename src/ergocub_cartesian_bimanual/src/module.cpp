@@ -60,42 +60,62 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
     bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
 
-    /* right_arm.ini */
+    /* Abilitazioni opzionali delle chain */
+    right_enabled_ = rf.check("RIGHT_ARM");
+    left_enabled_  = rf.check("LEFT_ARM");
+    torso_enabled_ = rf.check("TORSO");
+
+    if (!right_enabled_ && !left_enabled_ && !torso_enabled_)
+    {
+        yError() << "[" + module_name_ + "::configure] At least one chain must be enabled (RIGHT_ARM, LEFT_ARM, TORSO).";
+        return false;
+    }
+
+    /* right_arm.ini (opzionale) */
     yarp::os::Bottle RIGHT_ARM_bot;
-    if (!groupCheckAndRetrieve(rf, "RIGHT_ARM", RIGHT_ARM_bot))
-        return false;
-
-    if  (   !(utils::checkParameters({{"improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, false))
-        ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, true))
-        ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::String, false)))
+    if (right_enabled_)
     {
-        yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for RIGHT_ARM group missing or invalid.";
-        return false;
+        if (!groupCheckAndRetrieve(rf, "RIGHT_ARM", RIGHT_ARM_bot))
+            return false;
+
+        if  (   !(utils::checkParameters({{"improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, false))
+            ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, true))
+            ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::String, false)))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for RIGHT_ARM group missing or invalid.";
+            return false;
+        }
     }
 
-    /* leftt_arm.ini */
+    /* left_arm.ini (opzionale) */
     yarp::os::Bottle LEFT_ARM_bot;
-    if (!groupCheckAndRetrieve(rf, "LEFT_ARM", LEFT_ARM_bot))
-        return false;
-
-    if  (   !(utils::checkParameters({{"improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, false))
-        ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, true))
-        ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", LEFT_ARM_bot, "", utils::ParameterType::String, false)))
+    if (left_enabled_)
     {
-        yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for LEFT_ARM group missing or invalid.";
-        return false;
+        if (!groupCheckAndRetrieve(rf, "LEFT_ARM", LEFT_ARM_bot))
+            return false;
+
+        if  (   !(utils::checkParameters({{"improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, false))
+            ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, true))
+            ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", LEFT_ARM_bot, "", utils::ParameterType::String, false)))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for LEFT_ARM group missing or invalid.";
+            return false;
+        }
     }
 
-    /* torso.ini */
+    /* torso.ini (opzionale) */
     yarp::os::Bottle TORSO_bot;
-    if (!groupCheckAndRetrieve(rf, "TORSO", TORSO_bot))
-        return false;
-
-    if  (   !(utils::checkParameters({{"joint_limits_param", "joint_acc_weight"}}, "", TORSO_bot, "", utils::ParameterType::Float64, false))
-        ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", TORSO_bot, "", utils::ParameterType::Float64, true)))
+    if (torso_enabled_)
     {
-        yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
-        return false;
+        if (!groupCheckAndRetrieve(rf, "TORSO", TORSO_bot))
+            return false;
+
+        if  (   !(utils::checkParameters({{"joint_limits_param", "joint_acc_weight"}}, "", TORSO_bot, "", utils::ParameterType::Float64, false))
+            ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", TORSO_bot, "", utils::ParameterType::Float64, true)))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
+            return false;
+        }
     }
 
     /* Configure RPC service. */
@@ -107,40 +127,46 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     /* Instantiate and initialize CHAINS and SUBCHAINS. */
     {
-        if (!right_arm_.cjc.configure(RIGHT_ARM_bot))
+        if (right_enabled_)
         {
-            yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for RIGHT_ARM. See the errors above.";
-            return false;
+            if (!right_arm_.cjc.configure(RIGHT_ARM_bot))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for RIGHT_ARM. See the errors above.";
+                return false;
+            }
+            if (!right_arm_.cjc.configureJointsMode("Streaming"))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for RIGHT_ARM. See the errors above.";
+                return false;
+            }
         }
 
-        if (!left_arm_.cjc.configure(LEFT_ARM_bot))
+        if (left_enabled_)
         {
-            yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for LEFT_ARM. See the errors above.";
-            return false;
+            if (!left_arm_.cjc.configure(LEFT_ARM_bot))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for LEFT_ARM. See the errors above.";
+                return false;
+            }
+            if (!left_arm_.cjc.configureJointsMode("Streaming"))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for LEFT_ARM. See the errors above.";
+                return false;
+            }
         }
 
-        if (!torso_.cjc.configure(TORSO_bot))
+        if (torso_enabled_)
         {
-            yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for TORSO. See the errors above.";
-            return false;
-        }
-
-        if (!right_arm_.cjc.configureJointsMode("Streaming"))
-        {
-            yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for RIGHT_ARM. See the errors above.";
-            return false;
-        }
-
-        if (!left_arm_.cjc.configureJointsMode("Streaming"))
-        {
-            yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for LEFT_ARM. See the errors above.";
-            return false;
-        }
-
-        if (!torso_.cjc.configureJointsMode("Streaming"))
-        {
-            yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for TORSO. See the errors above.";
-            return false;
+            if (!torso_.cjc.configure(TORSO_bot))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for TORSO. See the errors above.";
+                return false;
+            }
+            if (!torso_.cjc.configureJointsMode("Streaming"))
+            {
+                yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for TORSO. See the errors above.";
+                return false;
+            }
         }
 
         if(!encodersMeasUpdate())
@@ -160,23 +186,34 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             return false;
         }
 
-        std::vector<std::string> torso_joints_list ,right_chain_joints_list, left_chain_joints_list;
+        std::vector<std::string> torso_joints_list;
 
-        torso_joints_list = utils::loadVectorString(TORSO_bot, "joint_axes_list");
+        if (torso_enabled_)
+        {
+            torso_joints_list = utils::loadVectorString(TORSO_bot, "joint_axes_list");
+        }
 
         /* right arm*/
-        right_chain_joints_list = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
-        right_chain_joints_list.insert(right_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
+        if (right_enabled_)
+        {
+            auto right_chain_joints_list = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
+            if (torso_enabled_)
+                right_chain_joints_list.insert(right_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
 
-        right_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
-        right_chain_.refFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+            right_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+            right_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+        }
 
         /* left arm*/
-        left_chain_joints_list = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
-        left_chain_joints_list.insert(left_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
+        if (left_enabled_)
+        {
+            auto left_chain_joints_list = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
+            if (torso_enabled_)
+                left_chain_joints_list.insert(left_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
 
-        left_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
-        left_chain_.refFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+            left_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+            left_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+        }
     }
 
     /* Instantiate and initialize QP_inverse kinematics. */
@@ -187,63 +224,116 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         Eigen::VectorXd cartesian_ori_weight, cartesian_ori_p_gain, cartesian_ori_d_gain;
         Eigen::VectorXd joint_home;
 
-        // RIGHT ARM
-        appendEigen(joint_limits_params, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_limits_param").asFloat64()));
-        appendEigen(joint_acc_weights, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_acc_weight").asFloat64()));
+        auto appendOrInit = [&](Eigen::VectorXd &dst, const Eigen::VectorXd &src)
+        {
+            Eigen::VectorXd temp(dst);
+            dst.resize(temp.size() + src.size());
+            if (temp.size() > 0) dst << temp, src; else dst << src;
+        };
 
-        appendEigen(joint_pos_weights, utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_weight"));
-        appendEigen(joint_pos_p_gain, utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_p_gain"));
-        appendEigen(joint_pos_d_gain, utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_d_gain"));
+        // RIGHT ARM (joint e cartesian)
+        if (right_enabled_)
+        {
+            appendOrInit(joint_limits_params, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_limits_param").asFloat64()));
+            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_acc_weight").asFloat64()));
 
-        appendEigen(cartesian_pos_weight, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
-        appendEigen(cartesian_pos_p_gain, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
-        appendEigen(cartesian_pos_d_gain, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
+            appendOrInit(joint_pos_weights, utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_weight"));
+            appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_p_gain"));
+            appendOrInit(joint_pos_d_gain,  utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_d_gain"));
 
-        appendEigen(cartesian_ori_weight, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
-        appendEigen(cartesian_ori_p_gain, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
-        appendEigen(cartesian_ori_d_gain, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));
+            appendOrInit(joint_home, *right_arm_.joint_pos);
+        }
+        // LEFT ARM (joint e cartesian)
+        if (left_enabled_)
+        {
+            appendOrInit(joint_limits_params, Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_limits_param").asFloat64()));
+            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_acc_weight").asFloat64()));
 
-        appendEigen(joint_home, *right_arm_.joint_pos);
+            appendOrInit(joint_pos_weights, utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_weight"));
+            appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_p_gain"));
+            appendOrInit(joint_pos_d_gain,  utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_d_gain"));
 
-        // LEFT ARM
-        appendEigen(joint_limits_params, Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_limits_param").asFloat64()));
-        appendEigen(joint_acc_weights, Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_acc_weight").asFloat64()));
+            appendOrInit(joint_home, *left_arm_.joint_pos);
+        }
+        // TORSO (solo joint terms)
+        if (torso_enabled_)
+        {
+            appendOrInit(joint_limits_params, Eigen::Vector<double,1>(TORSO_bot.find("joint_limits_param").asFloat64()));
+            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(TORSO_bot.find("joint_acc_weight").asFloat64()));
 
-        appendEigen(joint_pos_weights, utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_weight"));
-        appendEigen(joint_pos_p_gain, utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_p_gain"));
-        appendEigen(joint_pos_d_gain, utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_d_gain"));
+            appendOrInit(joint_pos_weights, utils::loadVectorDouble(TORSO_bot, "joint_pos_weight"));
+            appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(TORSO_bot, "joint_pos_p_gain"));
+            appendOrInit(joint_pos_d_gain,  utils::loadVectorDouble(TORSO_bot, "joint_pos_d_gain"));
 
-        appendEigen(cartesian_pos_weight, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
-        appendEigen(cartesian_pos_p_gain, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
-        appendEigen(cartesian_pos_d_gain, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
+            appendOrInit(joint_home, *torso_.joint_pos);
+        }
 
-        appendEigen(cartesian_ori_weight, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
-        appendEigen(cartesian_ori_p_gain, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
-        appendEigen(cartesian_ori_d_gain, Eigen::Vector<double,1>(LEFT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));
+        // Pesi cartesiani: mantieni dimensione fissa 2 (Right, Left). Se una EE è disabilitata → peso/gain = 0.
+        auto s = [](double v) { Eigen::Vector<double,1> x; x << v; return x; };
 
-        appendEigen(joint_home, *left_arm_.joint_pos);
+        if (right_enabled_)
+        {
+            appendOrInit(cartesian_pos_weight, s(RIGHT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
+            appendOrInit(cartesian_pos_p_gain, s(RIGHT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
+            appendOrInit(cartesian_pos_d_gain, s(RIGHT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
 
-        // TORSO
-        appendEigen(joint_limits_params, Eigen::Vector<double,1>(TORSO_bot.find("joint_limits_param").asFloat64()));
-        appendEigen(joint_acc_weights, Eigen::Vector<double,1>(TORSO_bot.find("joint_acc_weight").asFloat64()));
+            appendOrInit(cartesian_ori_weight, s(RIGHT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
+            appendOrInit(cartesian_ori_p_gain, s(RIGHT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
+            appendOrInit(cartesian_ori_d_gain, s(RIGHT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));
+        }
+        else
+        {
+            appendOrInit(cartesian_pos_weight, s(0.0));
+            appendOrInit(cartesian_pos_p_gain, s(0.0));
+            appendOrInit(cartesian_pos_d_gain, s(0.0));
 
-        appendEigen(joint_pos_weights, utils::loadVectorDouble(TORSO_bot, "joint_pos_weight"));
-        appendEigen(joint_pos_p_gain, utils::loadVectorDouble(TORSO_bot, "joint_pos_p_gain"));
-        appendEigen(joint_pos_d_gain, utils::loadVectorDouble(TORSO_bot, "joint_pos_d_gain"));
+            appendOrInit(cartesian_ori_weight, s(0.0));
+            appendOrInit(cartesian_ori_p_gain, s(0.0));
+            appendOrInit(cartesian_ori_d_gain, s(0.0));
+        }
 
-        appendEigen(joint_home, *torso_.joint_pos);
+        if (left_enabled_)
+        {
+            appendOrInit(cartesian_pos_weight, s(LEFT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
+            appendOrInit(cartesian_pos_p_gain, s(LEFT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
+            appendOrInit(cartesian_pos_d_gain, s(LEFT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
 
-        // RIGHT AND LEFT ARM
-        compound_chain_.stop_vel = std::min(LEFT_ARM_bot.find("stop_vel").asFloat64(), RIGHT_ARM_bot.find("stop_vel").asFloat64());
-        double improve_manip_weight = std::min(LEFT_ARM_bot.find("improve_manip_weight").asFloat64(), RIGHT_ARM_bot.find("improve_manip_weight").asFloat64());
+            appendOrInit(cartesian_ori_weight, s(LEFT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
+            appendOrInit(cartesian_ori_p_gain, s(LEFT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
+            appendOrInit(cartesian_ori_d_gain, s(LEFT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));
+        }
+        else
+        {
+            appendOrInit(cartesian_pos_weight, s(0.0));
+            appendOrInit(cartesian_pos_p_gain, s(0.0));
+            appendOrInit(cartesian_pos_d_gain, s(0.0));
+
+            appendOrInit(cartesian_ori_weight, s(0.0));
+            appendOrInit(cartesian_ori_p_gain, s(0.0));
+            appendOrInit(cartesian_ori_d_gain, s(0.0));
+        }
+
+        // RIGHT AND LEFT ARM: stop_vel & improve_manip_weight
+        std::vector<double> stop_vels, manip_ws;
+        if (right_enabled_) { stop_vels.push_back(RIGHT_ARM_bot.find("stop_vel").asFloat64());
+                              manip_ws.push_back(RIGHT_ARM_bot.find("improve_manip_weight").asFloat64()); }
+        if (left_enabled_)  { stop_vels.push_back(LEFT_ARM_bot.find("stop_vel").asFloat64());
+                              manip_ws.push_back(LEFT_ARM_bot.find("improve_manip_weight").asFloat64()); }
+
+        compound_chain_.stop_vel = stop_vels.empty() ? 1e-3 : *std::min_element(stop_vels.begin(), stop_vels.end());
+        double improve_manip_weight = manip_ws.empty() ? 0.0 : *std::min_element(manip_ws.begin(), manip_ws.end());
+
+        int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
+        int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
+        int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
 
         // IK
         try{
             compound_chain_.ik = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_,
                                                                                 qp_verbose,
-                                                                                (*right_arm_.joint_pos).size(),
-                                                                                (*left_arm_.joint_pos).size(),
-                                                                                (*torso_.joint_pos).size(),
+                                                                                nR,
+                                                                                nL,
+                                                                                nT,
                                                                                 joint_acc_weights,
                                                                                 joint_pos_weights,
                                                                                 joint_pos_p_gain,
@@ -263,24 +353,42 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             return false;
         }
 
-
         // Retrieve joint limits and set in IK
-        std::optional<std::unordered_map<std::string, Eigen::VectorXd>> r_joints_limit = right_arm_.cjc.getJointLimits();
-        std::optional<std::unordered_map<std::string, Eigen::VectorXd>> l_joints_limit = left_arm_.cjc.getJointLimits();
-        std::optional<std::unordered_map<std::string, Eigen::VectorXd>> t_joints_limit = torso_.cjc.getJointLimits();
-        if (!r_joints_limit.has_value() || !l_joints_limit.has_value() || !t_joints_limit.has_value())
-        {
-            yError() << "[" + module_name_ + "::configure]Error: CubJointControl cannot retrieve joint limits.";
-            return false;
-        }
-
         Eigen::VectorXd lower_limits, upper_limits;
-        appendEigen(lower_limits, (*r_joints_limit)["lower"]);
-        appendEigen(lower_limits, (*l_joints_limit)["lower"]);
-        appendEigen(lower_limits, (*t_joints_limit)["lower"]);
-        appendEigen(upper_limits, (*r_joints_limit)["upper"]);
-        appendEigen(upper_limits, (*l_joints_limit)["upper"]);
-        appendEigen(upper_limits, (*t_joints_limit)["upper"]);
+
+        if (right_enabled_)
+        {
+            auto r_joints_limit = right_arm_.cjc.getJointLimits();
+            if (!r_joints_limit.has_value())
+            {
+                yError() << "[" + module_name_ + "::configure]Error: CubJointControl cannot retrieve RIGHT_ARM joint limits.";
+                return false;
+            }
+            appendEigen(lower_limits, (*r_joints_limit)["lower"]);
+            appendEigen(upper_limits, (*r_joints_limit)["upper"]);
+        }
+        if (left_enabled_)
+        {
+            auto l_joints_limit = left_arm_.cjc.getJointLimits();
+            if (!l_joints_limit.has_value())
+            {
+                yError() << "[" + module_name_ + "::configure]Error: CubJointControl cannot retrieve LEFT_ARM joint limits.";
+                return false;
+            }
+            appendEigen(lower_limits, (*l_joints_limit)["lower"]);
+            appendEigen(upper_limits, (*l_joints_limit)["upper"]);
+        }
+        if (torso_enabled_)
+        {
+            auto t_joints_limit = torso_.cjc.getJointLimits();
+            if (!t_joints_limit.has_value())
+            {
+                yError() << "[" + module_name_ + "::configure]Error: CubJointControl cannot retrieve TORSO joint limits.";
+                return false;
+            }
+            appendEigen(lower_limits, (*t_joints_limit)["lower"]);
+            appendEigen(upper_limits, (*t_joints_limit)["upper"]);
+        }
 
         if(!compound_chain_.ik->set_joint_limits(lower_limits, upper_limits, joint_limits_params))
         {
@@ -289,28 +397,49 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
 
         /* Instantiate and initialize integrators */
+        Eigen::VectorXd init_pos, init_vel, init_acc;
+        if (right_enabled_) { appendEigen(init_pos, *right_arm_.joint_pos); appendEigen(init_vel, *right_arm_.joint_vel); appendEigen(init_acc, *right_arm_.joint_acc); }
+        if (left_enabled_)  { appendEigen(init_pos, *left_arm_.joint_pos);  appendEigen(init_vel, *left_arm_.joint_vel);  appendEigen(init_acc, *left_arm_.joint_acc); }
+        if (torso_enabled_) { appendEigen(init_pos, *torso_.joint_pos);     appendEigen(init_vel, *torso_.joint_vel);     appendEigen(init_acc, *torso_.joint_acc); }
+
         compound_chain_.vel2pos_integrator = std::make_unique<Integrator>(sample_time_);
-        compound_chain_.vel2pos_integrator->set_initial_condition(concatenateEigen(*right_arm_.joint_pos, concatenateEigen(*left_arm_.joint_pos, *torso_.joint_pos)));
+        compound_chain_.vel2pos_integrator->set_initial_condition(init_pos);
 
         compound_chain_.acc2vel_integrator = std::make_unique<Integrator>(sample_time_);
-        compound_chain_.acc2vel_integrator->set_initial_condition(concatenateEigen(*right_arm_.joint_vel, concatenateEigen(*left_arm_.joint_vel, *torso_.joint_vel)));
+        compound_chain_.acc2vel_integrator->set_initial_condition(init_vel);
 
         /* Initialize joint refs */
-        qp_result_ = concatenateEigen(*right_arm_.joint_acc, concatenateEigen(*left_arm_.joint_acc, *torso_.joint_acc));
+        qp_result_ = init_acc;
         encodersRefUpdate();
     }
 
     measFksUpdate();
-    right_chain_.home_pose = right_chain_.measFk->get_ee_transform();
-    left_chain_.home_pose = left_chain_.measFk->get_ee_transform();
 
-    right_desired_pose_ = right_chain_.home_pose;
+    if (right_enabled_)
+    {
+        right_chain_.home_pose = right_chain_.measFk->get_ee_transform();
+        right_desired_pose_ = right_chain_.home_pose;
+    }
+    else
+    {
+        right_desired_pose_.setIdentity();
+    }
+
+    if (left_enabled_)
+    {
+        left_chain_.home_pose = left_chain_.measFk->get_ee_transform();
+        left_desired_pose_ = left_chain_.home_pose;
+    }
+    else
+    {
+        left_desired_pose_.setIdentity();
+    }
+
     right_desired_lin_vel_ = Eigen::Vector3d::Zero();
     right_desired_ang_vel_ = Eigen::Vector3d::Zero();
     right_desired_lin_acc_ = Eigen::Vector3d::Zero();
     right_desired_ang_acc_ = Eigen::Vector3d::Zero();
 
-    left_desired_pose_ = left_chain_.home_pose;
     left_desired_lin_vel_ = Eigen::Vector3d::Zero();
     left_desired_ang_vel_ = Eigen::Vector3d::Zero();
     left_desired_lin_acc_ = Eigen::Vector3d::Zero();
@@ -361,19 +490,19 @@ bool Module::updateModule()
 
     if(getState()==State::Running)
     {
-
+        yDebug() << "[" + module_name_ + "::updateModule] DENTRO IF RUNNING.";
         refFksUpdate();
-
+        
         ikUpdate();
-
+        yDebug() << "[" + module_name_ + "::IKUPDATE() FATTO.";
         setDesiredTrajectory();
-
+        yDebug() << "[" + module_name_ + "::SETDESIREDTRAJ() FATTO.";
         if(!solveIkAndUpdateIntegrators())
         {
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
             return false;
         }
-
+        yDebug() << "[" + module_name_ + "::solveIkAndUpdateIntegrators() FATTO.";
         if (!encodersRefUpdate())
         {
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
@@ -404,43 +533,108 @@ bool Module::updateModule()
 
 bool Module::encodersMeasUpdate()
 {
-    right_arm_.joint_pos = right_arm_.cjc.getJointValues();
-    left_arm_.joint_pos = left_arm_.cjc.getJointValues();
-    torso_.joint_pos = torso_.cjc.getJointValues();
-
-    right_arm_.joint_vel = right_arm_.cjc.getJointSpeeds();
-    left_arm_.joint_vel = left_arm_.cjc.getJointSpeeds();
-    torso_.joint_vel = torso_.cjc.getJointSpeeds();
-
-    right_arm_.joint_acc = right_arm_.cjc.getJointAccelerations();
-    left_arm_.joint_acc = left_arm_.cjc.getJointAccelerations();
-    torso_.joint_acc = torso_.cjc.getJointAccelerations();
-
-    if (!right_arm_.joint_pos.has_value() || !left_arm_.joint_pos.has_value() || !torso_.joint_pos.has_value())
+    // Leggi solo le chain abilitate
+    if (right_enabled_)
     {
-        yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve joint positions.";
-        return false;
+        right_arm_.joint_pos = right_arm_.cjc.getJointValues();
+        right_arm_.joint_vel = right_arm_.cjc.getJointSpeeds();
+        right_arm_.joint_acc = right_arm_.cjc.getJointAccelerations();
+
+        if (!right_arm_.joint_pos.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint positions.";
+            return false;
+        }
+        if (!right_arm_.joint_vel.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint velocities.";
+            return false;
+        }
+        if (!right_arm_.joint_acc.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint accelerations.";
+            return false;
+        }
     }
 
-    if (!right_arm_.joint_vel.has_value() || !left_arm_.joint_vel.has_value() || !torso_.joint_vel.has_value())
+    if (left_enabled_)
     {
-        yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve joint velocities.";
-        return false;
+        left_arm_.joint_pos = left_arm_.cjc.getJointValues();
+        left_arm_.joint_vel = left_arm_.cjc.getJointSpeeds();
+        left_arm_.joint_acc = left_arm_.cjc.getJointAccelerations();
+
+        if (!left_arm_.joint_pos.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint positions.";
+            return false;
+        }
+        if (!left_arm_.joint_vel.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint velocities.";
+            return false;
+        }
+        if (!left_arm_.joint_acc.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint accelerations.";
+            return false;
+        }
     }
 
-    if (!right_arm_.joint_acc.has_value() || !left_arm_.joint_acc.has_value() || !torso_.joint_acc.has_value())
+    if (torso_enabled_)
     {
-        yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve joint accelerations.";
-        return false;
+        torso_.joint_pos = torso_.cjc.getJointValues();
+        torso_.joint_vel = torso_.cjc.getJointSpeeds();
+        torso_.joint_acc = torso_.cjc.getJointAccelerations();
+
+        if (!torso_.joint_pos.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint positions.";
+            return false;
+        }
+        if (!torso_.joint_vel.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint velocities.";
+            return false;
+        }
+        if (!torso_.joint_acc.has_value())
+        {
+            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint accelerations.";
+            return false;
+        }
     }
 
-    right_chain_.measJoints.pos = concatenateEigen(*right_arm_.joint_pos, *torso_.joint_pos);
-    right_chain_.measJoints.vel = concatenateEigen(*right_arm_.joint_vel, *torso_.joint_vel);
-    right_chain_.measJoints.acc = concatenateEigen(*right_arm_.joint_acc, *torso_.joint_acc);
+    // Aggiorna i vettori joints misurati delle chain (arm + torso se presente)
+    if (right_enabled_)
+    {
+        if (torso_enabled_)
+        {
+            right_chain_.measJoints.pos = concatenateEigen(*right_arm_.joint_pos, *torso_.joint_pos);
+            right_chain_.measJoints.vel = concatenateEigen(*right_arm_.joint_vel, *torso_.joint_vel);
+            right_chain_.measJoints.acc = concatenateEigen(*right_arm_.joint_acc, *torso_.joint_acc);
+        }
+        else
+        {
+            right_chain_.measJoints.pos = *right_arm_.joint_pos;
+            right_chain_.measJoints.vel = *right_arm_.joint_vel;
+            right_chain_.measJoints.acc = *right_arm_.joint_acc;
+        }
+    }
 
-    left_chain_.measJoints.pos = concatenateEigen(*left_arm_.joint_pos, *torso_.joint_pos);
-    left_chain_.measJoints.vel = concatenateEigen(*left_arm_.joint_vel, *torso_.joint_vel);
-    left_chain_.measJoints.acc = concatenateEigen(*left_arm_.joint_acc, *torso_.joint_acc);
+    if (left_enabled_)
+    {
+        if (torso_enabled_)
+        {
+            left_chain_.measJoints.pos = concatenateEigen(*left_arm_.joint_pos, *torso_.joint_pos);
+            left_chain_.measJoints.vel = concatenateEigen(*left_arm_.joint_vel, *torso_.joint_vel);
+            left_chain_.measJoints.acc = concatenateEigen(*left_arm_.joint_acc, *torso_.joint_acc);
+        }
+        else
+        {
+            left_chain_.measJoints.pos = *left_arm_.joint_pos;
+            left_chain_.measJoints.vel = *left_arm_.joint_vel;
+            left_chain_.measJoints.acc = *left_arm_.joint_acc;
+        }
+    }
 
     return true;
 }
@@ -453,17 +647,45 @@ bool Module::encodersRefUpdate()
     compound_chain_.joints.vel = compound_chain_.acc2vel_integrator->get_state();
     compound_chain_.joints.pos = compound_chain_.vel2pos_integrator->get_state();
 
-    int r_joint_num = right_arm_.cjc.getNumberJoints();
-    int l_joint_num = left_arm_.cjc.getNumberJoints();
-    int t_joint_num = torso_.cjc.getNumberJoints();
-    // extract right chain joints ref
-    right_chain_.refJoints.pos = concatenateEigen(compound_chain_.joints.pos.topRows(r_joint_num),compound_chain_.joints.pos.bottomRows(t_joint_num));
-    right_chain_.refJoints.vel = concatenateEigen(compound_chain_.joints.vel.topRows(r_joint_num),compound_chain_.joints.vel.bottomRows(t_joint_num));
-    right_chain_.refJoints.acc = concatenateEigen(compound_chain_.joints.acc.topRows(r_joint_num),compound_chain_.joints.acc.bottomRows(t_joint_num));
-    // extract left chain joints ref
-    left_chain_.refJoints.pos = concatenateEigen(compound_chain_.joints.pos.segment(r_joint_num, l_joint_num),compound_chain_.joints.pos.bottomRows(t_joint_num));
-    left_chain_.refJoints.vel = concatenateEigen(compound_chain_.joints.vel.segment(r_joint_num, l_joint_num),compound_chain_.joints.vel.bottomRows(t_joint_num));
-    left_chain_.refJoints.acc = concatenateEigen(compound_chain_.joints.acc.segment(r_joint_num, l_joint_num),compound_chain_.joints.acc.bottomRows(t_joint_num));
+    int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
+    int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
+    int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
+
+    int offR = 0;
+    int offL = offR + nR;
+    int offT = offL + nL;
+
+    if (right_enabled_)
+    {
+        if (torso_enabled_)
+        {
+            right_chain_.refJoints.pos = concatenateEigen(compound_chain_.joints.pos.segment(offR, nR), compound_chain_.joints.pos.segment(offT, nT));
+            right_chain_.refJoints.vel = concatenateEigen(compound_chain_.joints.vel.segment(offR, nR), compound_chain_.joints.vel.segment(offT, nT));
+            right_chain_.refJoints.acc = concatenateEigen(compound_chain_.joints.acc.segment(offR, nR), compound_chain_.joints.acc.segment(offT, nT));
+        }
+        else
+        {
+            right_chain_.refJoints.pos = compound_chain_.joints.pos.segment(offR, nR);
+            right_chain_.refJoints.vel = compound_chain_.joints.vel.segment(offR, nR);
+            right_chain_.refJoints.acc = compound_chain_.joints.acc.segment(offR, nR);
+        }
+    }
+
+    if (left_enabled_)
+    {
+        if (torso_enabled_)
+        {
+            left_chain_.refJoints.pos = concatenateEigen(compound_chain_.joints.pos.segment(offL, nL), compound_chain_.joints.pos.segment(offT, nT));
+            left_chain_.refJoints.vel = concatenateEigen(compound_chain_.joints.vel.segment(offL, nL), compound_chain_.joints.vel.segment(offT, nT));
+            left_chain_.refJoints.acc = concatenateEigen(compound_chain_.joints.acc.segment(offL, nL), compound_chain_.joints.acc.segment(offT, nT));
+        }
+        else
+        {
+            left_chain_.refJoints.pos = compound_chain_.joints.pos.segment(offL, nL);
+            left_chain_.refJoints.vel = compound_chain_.joints.vel.segment(offL, nL);
+            left_chain_.refJoints.acc = compound_chain_.joints.acc.segment(offL, nL);
+        }
+    }
 
     return true;
 }
@@ -472,19 +694,28 @@ bool Module::encodersRefUpdate()
 bool Module::measFksUpdate()
 {
     //Right
-    right_chain_.measFk->set_joints_state(right_chain_.measJoints.pos, right_chain_.measJoints.vel, right_chain_.measJoints.acc);
-    right_chain_.measFk->update();
-
-    right_chain_.refFk->set_joints_state(right_chain_.refJoints.pos, right_chain_.refJoints.vel, right_chain_.refJoints.acc);
-    right_chain_.refFk->update();
+    if (right_enabled_ && right_chain_.measFk)
+    {
+        right_chain_.measFk->set_joints_state(right_chain_.measJoints.pos, right_chain_.measJoints.vel, right_chain_.measJoints.acc);
+        right_chain_.measFk->update();
+    }
+    if (right_enabled_ && right_chain_.refFk)
+    {
+        right_chain_.refFk->set_joints_state(right_chain_.refJoints.pos, right_chain_.refJoints.vel, right_chain_.refJoints.acc);
+        right_chain_.refFk->update();
+    }
 
     //Left
-    left_chain_.measFk->set_joints_state(left_chain_.measJoints.pos, left_chain_.measJoints.vel, left_chain_.measJoints.acc);
-    left_chain_.measFk->update();
-
-    left_chain_.refFk->set_joints_state(left_chain_.refJoints.pos, left_chain_.refJoints.vel, left_chain_.refJoints.acc);
-    left_chain_.refFk->update();
-
+    if (left_enabled_ && left_chain_.measFk)
+    {
+        left_chain_.measFk->set_joints_state(left_chain_.measJoints.pos, left_chain_.measJoints.vel, left_chain_.measJoints.acc);
+        left_chain_.measFk->update();
+    }
+    if (left_enabled_ && left_chain_.refFk)
+    {
+        left_chain_.refFk->set_joints_state(left_chain_.refJoints.pos, left_chain_.refJoints.vel, left_chain_.refJoints.acc);
+        left_chain_.refFk->update();
+    }
 
     return true;
 }
@@ -492,98 +723,115 @@ bool Module::measFksUpdate()
 
 bool Module::checkAndReadNewInputs()
 {
-    // The input is a vector structured as follows:
-    // [right pose left pose right velocity left velocity right acceleration left acceleration]
-    // right pose:          r_px r_py r_pz r_qx r_qy r_qz r_qw
-    // left  pose:          l_px l_py l_pz l_qx l_qy l_qz l_qw
-    // right velocity:      r_vx r_vy r_vz r_wx r_wy r_wz
-    // left  velocity:      l_vx l_vy l_vz l_wx l_wy l_wz
-    // right acceleration:  r_dvx r_dvy r_dvz r_dwx r_dwy r_dwz
-    // left  acceleration:  l_dvx l_dvy l_dvz l_dwx l_dwy l_dwz
-
-    auto setPoses = [&](const Eigen::VectorXd& r_pose, const Eigen::VectorXd& l_pose)
+    // L’input può contenere 0/1/2 EE (right/left): 7 per EE per le pose, +6 per EE per le vel, +6 per EE per le acc.
+    // Formati accettati: 7*ee, 13*ee, 19*ee.
+    auto setPoseRight = [&](const Eigen::VectorXd& r_pose)
     {
         right_desired_pose_ = Eigen::Translation3d(r_pose.head(3));
         Eigen::Vector4d q = r_pose.tail(4);
         right_desired_pose_.rotate(Eigen::Quaterniond(q));
-
+    };
+    auto setPoseLeft = [&](const Eigen::VectorXd& l_pose)
+    {
         left_desired_pose_ = Eigen::Translation3d(l_pose.head(3));
-        q = l_pose.tail(4);
+        Eigen::Vector4d q = l_pose.tail(4);
         left_desired_pose_.rotate(Eigen::Quaterniond(q));
-
-        return;
     };
 
-    auto setVelocities = [&](const Eigen::VectorXd& r_vel, const Eigen::VectorXd& l_vel)
+    auto setVel = [&](bool right, const Eigen::VectorXd& v)
     {
-        right_desired_lin_vel_ = r_vel.head(3);
-        right_desired_ang_vel_ = r_vel.tail(3);
-        left_desired_lin_vel_ = l_vel.head(3);
-        left_desired_ang_vel_ = l_vel.tail(3);
-
-        return;
+        if (right) { right_desired_lin_vel_ = v.head(3); right_desired_ang_vel_ = v.tail(3); }
+        else       { left_desired_lin_vel_  = v.head(3); left_desired_ang_vel_  = v.tail(3); }
+    };
+    auto setAcc = [&](bool right, const Eigen::VectorXd& a)
+    {
+        if (right) { right_desired_lin_acc_ = a.head(3); right_desired_ang_acc_ = a.tail(3); }
+        else       { left_desired_lin_acc_  = a.head(3); left_desired_ang_acc_  = a.tail(3); }
     };
 
-    auto setAccelerations = [&](const Eigen::VectorXd& r_acc, const Eigen::VectorXd& l_acc)
-    {
-        right_desired_lin_acc_ = r_acc.head(3);
-        right_desired_ang_acc_ = r_acc.tail(3);
-        left_desired_lin_acc_ = l_acc.head(3);
-        left_desired_ang_acc_ = l_acc.tail(3);
-
-        return;
+    auto zeroVel = [&]() {
+        right_desired_lin_vel_.setZero(); right_desired_ang_vel_.setZero();
+        left_desired_lin_vel_.setZero();  left_desired_ang_vel_.setZero();
+    };
+    auto zeroAcc = [&]() {
+        right_desired_lin_acc_.setZero(); right_desired_ang_acc_.setZero();
+        left_desired_lin_acc_.setZero();  left_desired_ang_acc_.setZero();
     };
 
     yarp::sig::Vector* input = bp_cmd_port_.read(false);
-    if (input != nullptr )
+    if (input == nullptr )
+        return false;
+
+    int ee = (right_enabled_?1:0) + (left_enabled_?1:0);
+    if (ee == 0)
+        return false; // nessuna EE da controllare
+
+    auto next = [&](int n, int& idx) {
+        Eigen::VectorXd out = yarp::eigen::toEigen(input->subVector(idx, idx + n - 1));
+        idx += n;
+        return out;
+    };
+
+    int idx = 0;
+    const int nPose = 7*ee;
+    const int nVel  = 6*ee;
+    const int nAcc  = 6*ee;
+
+    if (input->size() == nPose || input->size() == nPose + nVel || input->size() == nPose + nVel + nAcc)
     {
-        if(input->size() == 14)
+        // POSE
+        if (right_enabled_) { setPoseRight(next(7, idx)); }
+        if (left_enabled_)  { setPoseLeft(next(7, idx)); }
+
+        // VEL
+        if ((int)input->size() >= nPose + nVel)
         {
-            setPoses(yarp::eigen::toEigen(input->subVector(0, 6)), yarp::eigen::toEigen(input->subVector(7, 13)));
-            setVelocities(Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6));
-            setAccelerations(Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6));
-            yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired poses.";
-            return true;
-        }
-        else if(input->size() == 26)
-        {
-            setPoses(yarp::eigen::toEigen(input->subVector(0, 6)), yarp::eigen::toEigen(input->subVector(7, 13)));
-            setVelocities(yarp::eigen::toEigen(input->subVector(14, 19)), yarp::eigen::toEigen(input->subVector(20, 25)));
-            setAccelerations(Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6));
-            yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired poses and velocities.";
-            return true;
-        }
-        else if(input->size() == 37)
-        {
-            setPoses(yarp::eigen::toEigen(input->subVector(0, 6)), yarp::eigen::toEigen(input->subVector(7, 13)));
-            setVelocities(yarp::eigen::toEigen(input->subVector(14, 19)), yarp::eigen::toEigen(input->subVector(20, 25)));
-            setAccelerations(yarp::eigen::toEigen(input->subVector(26, 31)), yarp::eigen::toEigen(input->subVector(32, 37)));
-            yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired poses, velocities and accelerations.";
-            return true;
+            if (right_enabled_) { setVel(true,  next(6, idx)); }
+            if (left_enabled_)  { setVel(false, next(6, idx)); }
         }
         else
-        {   //received wrong inputs: keep last desired pose and set velocities and accelerations to zero
-            setVelocities(Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6));
-            setAccelerations(Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6));
-            yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received wrong inputs. Keeping last desired poses.";
-            return true;
+        {
+            zeroVel();
         }
-    }
 
-    return false;
+        // ACC
+        if ((int)input->size() == nPose + nVel + nAcc)
+        {
+            if (right_enabled_) { setAcc(true,  next(6, idx)); }
+            if (left_enabled_)  { setAcc(false, next(6, idx)); }
+        }
+        else
+        {
+            zeroAcc();
+        }
+
+        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired trajectory data.";
+        return true;
+    }
+    else
+    {
+        // ricevuto formato inatteso: mantieni le pose correnti e azzera vel/acc
+        zeroVel();
+        zeroAcc();
+        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received wrong inputs. Keeping last desired poses.";
+        return true;
+    }
 }
 
 
 bool Module::refFksUpdate()
 {
-    //Right
-    right_chain_.refFk->set_joints_state(right_chain_.refJoints.pos, right_chain_.refJoints.vel, right_chain_.refJoints.acc);
-    right_chain_.refFk->update();
+    if (right_enabled_ && right_chain_.refFk)
+    {
+        right_chain_.refFk->set_joints_state(right_chain_.refJoints.pos, right_chain_.refJoints.vel, right_chain_.refJoints.acc);
+        right_chain_.refFk->update();
+    }
 
-    //Left
-    left_chain_.refFk->set_joints_state(left_chain_.refJoints.pos, left_chain_.refJoints.vel, left_chain_.refJoints.acc);
-    left_chain_.refFk->update();
-
+    if (left_enabled_ && left_chain_.refFk)
+    {
+        left_chain_.refFk->set_joints_state(left_chain_.refJoints.pos, left_chain_.refJoints.vel, left_chain_.refJoints.acc);
+        left_chain_.refFk->update();
+    }
 
     return true;
 }
@@ -591,37 +839,65 @@ bool Module::refFksUpdate()
 
 void Module::ikUpdate()
 {
-    compound_chain_.ik->set_robot_state(    compound_chain_.vel2pos_integrator->get_state(),
-                                            compound_chain_.acc2vel_integrator->get_state(),
-                                            right_chain_.refFk->get_ee_transform(),
-                                            right_chain_.refFk->get_ee_lin_vel(),
-                                            right_chain_.refFk->get_ee_ang_vel(),
-                                            right_chain_.refFk->get_ee_lin_acc(),
-                                            right_chain_.refFk->get_ee_ang_acc(),
-                                            right_chain_.refFk->get_jacobian(),
-                                            right_chain_.refFk->get_ee_bias_acc(),
-                                            left_chain_.refFk->get_ee_transform(),
-                                            left_chain_.refFk->get_ee_lin_vel(),
-                                            left_chain_.refFk->get_ee_ang_vel(),
-                                            left_chain_.refFk->get_ee_lin_acc(),
-                                            left_chain_.refFk->get_ee_ang_acc(),
-                                            left_chain_.refFk->get_jacobian(),
-                                            left_chain_.refFk->get_ee_bias_acc()
+    Eigen::Affine3d I = Eigen::Affine3d::Identity();
+    Eigen::Vector3d z3 = Eigen::Vector3d::Zero();
+    Eigen::MatrixXd J0(6, 0); // 6x0 per "nessuna" catena
+    J0.setZero();
+    Eigen::VectorXd b0 = Eigen::VectorXd::Zero(6);
+
+    // RIGHT (valori, non reference)
+    Eigen::Affine3d  rT  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_transform() : I;
+    Eigen::Vector3d  rVl = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_lin_vel()   : z3;
+    Eigen::Vector3d  rVa = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_ang_vel()   : z3;
+    Eigen::Vector3d  rAl = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_lin_acc()   : z3;
+    Eigen::Vector3d  rAa = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_ang_acc()   : z3;
+    Eigen::MatrixXd  rJ  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_jacobian()     : J0;
+    Eigen::VectorXd  rB  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_bias_acc()  : b0;
+
+    // LEFT (valori, non reference)
+    Eigen::Affine3d  lT  = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_transform() : I;
+    Eigen::Vector3d  lVl = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_lin_vel()   : z3;
+    Eigen::Vector3d  lVa = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_ang_vel()   : z3;
+    Eigen::Vector3d  lAl = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_lin_acc()   : z3;
+    Eigen::Vector3d  lAa = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_ang_acc()   : z3;
+    Eigen::MatrixXd  lJ  = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_jacobian()     : J0;
+    Eigen::VectorXd  lB  = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_bias_acc()  : b0;
+
+    compound_chain_.ik->set_robot_state(
+        compound_chain_.vel2pos_integrator->get_state(),
+        compound_chain_.acc2vel_integrator->get_state(),
+        rT, rVl, rVa, rAl, rAa, rJ, rB,
+        lT, lVl, lVa, lAl, lAa, lJ, lB
     );
 }
 
 
+
 void Module::setDesiredTrajectory()
 {
-    compound_chain_.ik->set_desired_ee_transform(right_desired_pose_, left_desired_pose_);
-    compound_chain_.ik->set_desired_ee_twist(right_desired_lin_vel_, right_desired_ang_vel_, left_desired_lin_vel_, left_desired_ang_vel_);
-    compound_chain_.ik->set_desired_ee_acceleration(right_desired_lin_acc_, right_desired_ang_acc_, left_desired_lin_acc_, left_desired_ang_acc_);
+    Eigen::Affine3d rPose = right_enabled_ ? right_desired_pose_ : Eigen::Affine3d::Identity();
+    Eigen::Affine3d lPose = left_enabled_  ? left_desired_pose_  : Eigen::Affine3d::Identity();
+
+    Eigen::Vector3d rLv   = right_enabled_ ? right_desired_lin_vel_ : Eigen::Vector3d::Zero();
+    Eigen::Vector3d rAv   = right_enabled_ ? right_desired_ang_vel_ : Eigen::Vector3d::Zero();
+    Eigen::Vector3d lLv   = left_enabled_  ? left_desired_lin_vel_  : Eigen::Vector3d::Zero();
+    Eigen::Vector3d lAv   = left_enabled_  ? left_desired_ang_vel_  : Eigen::Vector3d::Zero();
+
+    Eigen::Vector3d rLa   = right_enabled_ ? right_desired_lin_acc_ : Eigen::Vector3d::Zero();
+    Eigen::Vector3d rAa   = right_enabled_ ? right_desired_ang_acc_ : Eigen::Vector3d::Zero();
+    Eigen::Vector3d lLa   = left_enabled_  ? left_desired_lin_acc_  : Eigen::Vector3d::Zero();
+    Eigen::Vector3d lAa   = left_enabled_  ? left_desired_ang_acc_  : Eigen::Vector3d::Zero();
+
+    compound_chain_.ik->set_desired_ee_transform(rPose, lPose);
+    compound_chain_.ik->set_desired_ee_twist(rLv, rAv, lLv, lAv);
+    compound_chain_.ik->set_desired_ee_acceleration(rLa, rAa, lLa, lAa);
 }
 
 
 bool Module::solveIkAndUpdateIntegrators()
 {
     qp_result_ = compound_chain_.ik->solve();
+    yDebug() << "[" + module_name_ + "::solve() FATTO.";
 
     if (!qp_result_.has_value())
     {
@@ -640,25 +916,39 @@ bool Module::solveIkAndUpdateIntegrators()
 bool Module::moveChains()
 {
     Eigen::VectorXd joint_refs = compound_chain_.joints.pos;
-    int r_joint_num = right_arm_.cjc.getNumberJoints();
-    int l_joint_num = left_arm_.cjc.getNumberJoints();
-    int t_joint_num = torso_.cjc.getNumberJoints();
 
+    int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
+    int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
+    int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
 
-    if(!right_arm_.cjc.moveToStreaming(joint_refs.topRows(r_joint_num)))
+    int offset = 0;
+
+    if (right_enabled_)
     {
-        yError() << "[" + module_name_ + "::moveChains] Error: Cannot move RIGHT_ARM. See the errors above.";
-        return false;
+        if(!right_arm_.cjc.moveToStreaming(joint_refs.segment(offset, nR)))
+        {
+            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move RIGHT_ARM. See the errors above.";
+            return false;
+        }
+        offset += nR;
     }
-    if(!left_arm_.cjc.moveToStreaming(joint_refs.segment(r_joint_num, l_joint_num)))
+    if (left_enabled_)
     {
-        yError() << "[" + module_name_ + "::moveChains] Error: Cannot move LEFT_ARM. See the errors above.";
-        return false;
+        if(!left_arm_.cjc.moveToStreaming(joint_refs.segment(offset, nL)))
+        {
+            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move LEFT_ARM. See the errors above.";
+            return false;
+        }
+        offset += nL;
     }
-    if(!torso_.cjc.moveToStreaming(joint_refs.bottomRows(t_joint_num)))
+    if (torso_enabled_)
     {
-        yError() << "[" + module_name_ + "::moveChains] Error: Cannot move TORSO. See the errors above.";
-        return false;
+        if(!torso_.cjc.moveToStreaming(joint_refs.segment(offset, nT)))
+        {
+            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move TORSO. See the errors above.";
+            return false;
+        }
+        offset += nT;
     }
 
     return true;
@@ -684,7 +974,7 @@ bool Module::isMotionDone()
 void Module::setState(const State &des_state)
 {
     const std::lock_guard<std::mutex> lock(mutex_);
-
+    yDebug() << "SKIBIDIPIPPI SEI DENTRO SET STATE";
     state_ = des_state;
 }
 
@@ -760,10 +1050,12 @@ void Module::verboseAndLog()
     };
 
     /* RIGHT*/
-    fillVerboseAndLogStruct(right, right_max_manip, right_desired_pose_, right_chain_);
+    if (right_enabled_ && right_chain_.refFk && right_chain_.measFk)
+        fillVerboseAndLogStruct(right, right_max_manip, right_desired_pose_, right_chain_);
 
     /* LEFT*/
-    fillVerboseAndLogStruct(left, left_max_manip, left_desired_pose_, left_chain_);
+    if (left_enabled_ && left_chain_.refFk && left_chain_.measFk)
+        fillVerboseAndLogStruct(left, left_max_manip, left_desired_pose_, left_chain_);
 
     if (module_verbose_)
     {
@@ -801,7 +1093,7 @@ void Module::verboseAndLog()
             yInfo() << "joints qp acc" << eigenToString(vals.qp.jnt_acc);
             yInfo() << "joints qp vel" << eigenToString(vals.qp.jnt_vel);
             yInfo() << "joints qp pos" << eigenToString(vals.qp.jnt_pos);
-            yInfo() << "manip "<<vals.qp.manip<<" max_manip "<<max_manip<<" manip/max_manip "<<vals.qp.manip/max_manip<<" weight_manip_function "<<vals.qp.manip_func;
+            yInfo() << "manip "<<vals.qp.manip<<" max_manip "<<max_manip<<" manip/max_manip "<<(max_manip>0?vals.qp.manip/max_manip:0.0)<<" weight_manip_function "<<vals.qp.manip_func;
 
             //measured values
             yInfo() << "---------- Current values, errors w.r.t. QP generated -----------";
@@ -825,11 +1117,17 @@ void Module::verboseAndLog()
         else if (state == State::Running)
             yInfo() << "state\t|Running|";
 
-        yInfo() << "---------- RIGHT CHAIN -----------";
-        printVerboseAndLogStruct(right, right_max_manip);
+        if (right_enabled_ && right_chain_.refFk && right_chain_.measFk)
+        {
+            yInfo() << "---------- RIGHT CHAIN -----------";
+            printVerboseAndLogStruct(right, right_max_manip);
+        }
 
-        yInfo() << "---------- LEFT CHAIN -----------";
-        printVerboseAndLogStruct(left, left_max_manip);
+        if (left_enabled_ && left_chain_.refFk && left_chain_.measFk)
+        {
+            yInfo() << "---------- LEFT CHAIN -----------";
+            printVerboseAndLogStruct(left, left_max_manip);
+        }
     }
 
     if(module_logging_)
@@ -844,7 +1142,7 @@ void Module::appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app)
 {
     Eigen::VectorXd temp(vec);
     vec.resize(temp.size() + vec_app.size());
-    vec << temp, vec_app;
+    if (temp.size() > 0) vec << temp, vec_app; else vec << vec_app;
 };
 
 Eigen::VectorXd Module::concatenateEigen(const Eigen::VectorXd &vec1, const Eigen::VectorXd &vec2)

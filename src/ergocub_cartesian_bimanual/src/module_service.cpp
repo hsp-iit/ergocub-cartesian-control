@@ -39,10 +39,20 @@ bool Module::go_to_pose(double x, double y, double z, double q_x, double q_y, do
 
     if(strcmp(arm.c_str(), "right")==0)
     {
+        if (right_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::go_to_pose] Right arm is not enabled.";
+            return false;
+        }
         right_desired_pose_ = target_pose;
     }
     else if(strcmp(arm.c_str(), "left")==0)
     {
+        if (left_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::go_to_pose] Left arm is not enabled.";
+            return false;
+        }
         left_desired_pose_ = target_pose;
     }
     else
@@ -67,11 +77,21 @@ bool Module::go_to_position(double x, double y, double z, const std::string& arm
 
     if(strcmp(arm.c_str(), "right")==0)
     {
+        if (right_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::go_to_position] Right arm is not enabled.";
+            return false;
+        }
         target_pose.rotate(right_desired_pose_.rotation());
         right_desired_pose_ = target_pose;
     }
     else if(strcmp(arm.c_str(), "left")==0)
     {
+        if (left_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::go_to_position] Left arm is not enabled.";
+            return false;
+        }
         target_pose.rotate(left_desired_pose_.rotation());
         left_desired_pose_ = target_pose;
     }
@@ -100,10 +120,20 @@ bool Module::rotate_rad(double angle, double x, double y, double z, const std::s
 {
     if(strcmp(arm.c_str(), "right")==0)
     {
+        if (right_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::rotate_rad] Right arm is not enabled.";
+            return false;
+        }
         right_desired_pose_.rotate(Eigen::AngleAxis(angle, Eigen::Vector3d(x,y,z)));
     }
     else if(strcmp(arm.c_str(), "left")==0)
     {
+        if (left_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::rotate_rad] Left arm is not enabled.";
+            return false;
+        }
         left_desired_pose_.rotate(Eigen::AngleAxis(angle, Eigen::Vector3d(x,y,z)));
     }
     else
@@ -125,10 +155,20 @@ yarp::sig::Matrix Module::get_pose(const std::string& arm)
 
     if(strcmp(arm.c_str(), "right")==0)
     {
+        if (right_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::getPose(). Right arm is not enabled.";
+            return yarp_pose;
+        }
         yarp::eigen::toEigen(yarp_pose) = right_chain_.measFk->get_ee_transform().matrix();
     }
     else if(strcmp(arm.c_str(), "left")==0)
     {
+        if (left_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::getPose(). Left arm is not enabled.";
+            return yarp_pose;
+        }
         yarp::eigen::toEigen(yarp_pose) = left_chain_.measFk->get_ee_transform().matrix();
     }
     else
@@ -142,8 +182,16 @@ yarp::sig::Matrix Module::get_pose(const std::string& arm)
 
 bool Module::go_home()
 {
-    right_desired_pose_ = right_chain_.home_pose;
-    left_desired_pose_ = left_chain_.home_pose;
+    if (right_enabled_)
+    {
+        right_desired_pose_ = right_chain_.home_pose;
+    }
+    if (left_enabled_)
+    {
+        left_desired_pose_ = left_chain_.home_pose;
+    }
+    // right_desired_pose_ = right_chain_.home_pose;
+    // left_desired_pose_ = left_chain_.home_pose;
 
     setState(State::Running);
     return true;

@@ -50,10 +50,16 @@ public:
     bool go_home();
 
     bool stop();
+    
+    bool right_enabled_{false};
+    bool left_enabled_{false};
+    bool torso_enabled_{false};
 
 private:
     /* Module name */
     const std::string module_name_ = "mc-ergocub-cartesian-bimanual";
+
+    
 
     /* general.ini */
     double sample_time_;
