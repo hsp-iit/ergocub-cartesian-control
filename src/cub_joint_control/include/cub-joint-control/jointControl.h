@@ -73,6 +73,21 @@ public:
      * @return True if the configuration is accepted, False otherwise.
     */
    virtual bool configure(const yarp::os::Bottle& group) = 0;
+
+   /**
+    * Read the current joint values.
+    * @return An std::optional containing the current joint values as an Eigen::VectorXd
+    *         if the operation is successful, std::nullopt otherwise.
+   */
+   virtual std::optional<Eigen::VectorXd> getJointValues() const = 0;
+
+   /**
+    * Read the current joint values. This altnernative method is provided because of a longstanding
+    * bug with getJointValues https://github.com/hsp-iit/grasping-baselines/issues/92
+    * @param joints An Eigen::VectorXd to be filled with the current joint values.
+    * @return A boolean indicating whether the operation was successful or not.
+   */
+   virtual bool getJointValues2(Eigen::VectorXd& joints) const = 0;
 };
 
 #endif
