@@ -13,6 +13,7 @@
 
 CubJointControl::~CubJointControl()
 {
+    yDebug() << class_name_ + "::~CubJointControl(). Closing the CubJointControl for the end-effector with name '" + ee_name_ + "'.";
     /* Restore the original control mode. */
     if (control_mode_ != nullptr)
     {
@@ -31,6 +32,8 @@ CubJointControl::~CubJointControl()
         }
     }
 
+    yDebug() << class_name_ + "::~CubJointControl(). Closing the PolyDriver for the end-effector with name '" + ee_name_ + "'.";
+
     /* Close the driver. */
     if (drv_.isValid())
     {
@@ -39,6 +42,8 @@ CubJointControl::~CubJointControl()
             yError() << class_name_ << "::~CubJointControl(). Error: cannot close the driver for the end-effector with name '" + ee_name_ + "'.";
         }
     }
+
+    yDebug() << class_name_ + "::~CubJointControl(). CubJointControl for the end-effector with name '" + ee_name_ + "' closed successfully.";
 }
 
 
@@ -405,22 +410,18 @@ std::optional<Eigen::VectorXd> CubJointControl::getJointValues() const
 }
 
 
-void CubJointControl::getJointValues2(std::optional<Eigen::VectorXd>& joints) const
+bool CubJointControl::getJointValues2(Eigen::VectorXd& joints) const
 {
-    /* Check current joint values */
-    if(!joints.has_value()){
-        return;
-    }
+    joints.resize(joints_.size());
 
-    joints.value().resize(joints_.size());
-
-    if (!encoders_->getEncoders(joints.value().data()))
+    if (!encoders_->getEncoders(joints.data()))
     {
-        joints = {};
-        return;
+        return false;
     }
 
-    joints.value() *= M_PI / 180.0;
+    joints *= M_PI / 180.0;
+
+    return true;
 }
 
 

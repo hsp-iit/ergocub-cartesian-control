@@ -39,7 +39,7 @@ public:
 
     /* Retrieve current joint values. */
     std::optional<Eigen::VectorXd> getJointValues() const;
-    void getJointValues2(std::optional<Eigen::VectorXd>& joints) const;
+    bool getJointValues2(Eigen::VectorXd& joints) const override;
 
     /* Retrieve joint reference values. */
     std::optional<Eigen::VectorXd> getJointRefValues() const;
