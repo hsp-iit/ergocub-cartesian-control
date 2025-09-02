@@ -18,15 +18,17 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     const Eigen::MatrixXd &orientation_param,
     const Eigen::VectorXd &joint_pos_param,
     const Eigen::MatrixXd &joint_ref,
-    bool verbose,
     double improve_manip_dyn,
-    double improve_manip_th) : sampling_time_(sampling_time),
+    double improve_manip_th,
+    const int torso_joints_to_stiffen,
+    bool verbose) : sampling_time_(sampling_time),
                     limits_param_(limits_param),
                     joint_acc_weight_(joint_acc_weight),
                     position_param_(position_param),
                     orientation_param_(orientation_param),
                     joint_pos_param_(joint_pos_param),
                     joint_ref_(joint_ref),
+                    torso_joints_to_stiffen_(torso_joints_to_stiffen),
                     bias_acc_(Eigen::VectorXd::Zero(6)),
                     verbose_(verbose),
                     improve_manip_dyn_(improve_manip_dyn),
@@ -162,12 +164,12 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::eval_reference_v
         Eigen::MatrixXd JP_2 = joint_pos_param_(2) * Eigen::MatrixXd::Identity(joints_.size(), joints_.size());
 
         // Increment torso roll PD gains in order to prefer other joints motion.
-        JP_1(0,0)*=5;
-        JP_2(0,0)*=5;
-        JP_1(1,1)*=5;
-        JP_2(1,1)*=5;
-        JP_1(2,2)*=5;
-        JP_2(2,2)*=5;
+        for (int i = 0; i < torso_joints_to_stiffen_ && i < joints_.size(); i++)
+        {
+            JP_1(i,i) *= 5;
+            JP_2(i,i) *= 5;
+        }
+        
         ddq_ref = des_joints_acc + JP_1 * (joint_ref_ - joints_) + JP_2 * (des_joints_vel - joints_vel_);
 
         ddq_ref *= - 2.0 * joint_pos_param_(0);

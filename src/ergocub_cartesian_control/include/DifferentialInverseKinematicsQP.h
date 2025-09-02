@@ -26,6 +26,7 @@ public:
      * @param orientation_param The weight and gain used in the minimization of the QP functional for the orientation term.
      * @param joint_pos_param The weight and gain used in the minimization of the QP functional for the joint positions term.
      * @param joint_ref The joint position reference vector.
+    * @param torso_joints_to_stiffen The number of the torso joints to increase the PID of to make torso motion.
      * @param verbose To print some info.
      * @param improve_manip_dyn The dynamic gain for the manipulability improvement.
      * @param improve_manip_th The threshold for the manipulability improvement
@@ -38,9 +39,10 @@ public:
         const Eigen::MatrixXd &orientation_param,
         const Eigen::VectorXd &joint_pos_param,
         const Eigen::MatrixXd &joint_ref,
-        bool verbose,
         double improve_manip_dyn,
-        double improve_manip_th);
+        double improve_manip_th,
+        const int torso_joints_to_stiffen,
+        bool verbose);
 
     virtual ~DifferentialInverseKinematicsQP() = default;
 
@@ -204,6 +206,8 @@ private:
     const Eigen::VectorXd joint_pos_param_;
 
     const Eigen::MatrixXd joint_ref_;
+
+    int torso_joints_to_stiffen_;
 
     double max_manip_, manip_, weight_manip_function_;
     
