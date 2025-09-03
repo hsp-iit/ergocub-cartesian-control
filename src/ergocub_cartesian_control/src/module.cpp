@@ -727,7 +727,7 @@ bool Module::updateReferenceVelocities()
     if (!ik_joint_acc_.has_value())
     {
         yError() << module_name_ + "::updateReferenceVelocities(). Error: No value for the ik solution!";
-        return false;
+        return true;
     }
 
     acc2vel_integrator_->integrate(*ik_joint_acc_);
