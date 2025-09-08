@@ -18,7 +18,9 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     const Eigen::MatrixXd &orientation_param,
     const Eigen::VectorXd &joint_pos_param,
     const Eigen::MatrixXd &joint_ref,
-    bool verbose) : sampling_time_(sampling_time),
+    bool verbose,
+    double improve_manip_dyn,
+    double improve_manip_th) : sampling_time_(sampling_time),
                     limits_param_(limits_param),
                     joint_acc_weight_(joint_acc_weight),
                     position_param_(position_param),
@@ -26,7 +28,9 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
                     joint_pos_param_(joint_pos_param),
                     joint_ref_(joint_ref),
                     bias_acc_(Eigen::VectorXd::Zero(6)),
-                    verbose_(verbose)
+                    verbose_(verbose),
+                    improve_manip_dyn_(improve_manip_dyn),
+                    improve_manip_th_(improve_manip_th)
 {
     std::string error_message = class_name_ + "::ctor(). Error: parameter(s) not valid:";
     bool error = false;
@@ -383,12 +387,11 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
     Eigen::VectorXd dmdq(joints_.size());
     for(int i = 0; i < joints_.size(); i++){
         if(i == 0){dmdq(i) = 0.0;}
-        else{dmdq(i) = manip * (JJT_ldlt.solve( partial_derivative(jacobian_,i)*jacobian_.transpose() )).trace();}
+        else{dmdq(i) = manip/2 * (JJT_ldlt.solve( partial_derivative(jacobian_,i)*jacobian_.transpose() )).trace();}
     }
 
-    double improve_manip_dyn_ = 10.0;
-    const double improve_manip_th_ = 0.0100;
-
+    yDebug() << "gain: " << improve_manip_dyn_ ;
+    yDebug() << "gain: " << improve_manip_th_;
     if (manip <= improve_manip_th_)
     {
         std::cout << "\n\n\nmanip <= improve_manip_th_ "<< manip << " <= " << improve_manip_th_ <<"\n\n\n";
@@ -461,6 +464,11 @@ Eigen::MatrixXd DifferentialInverseKinematicsQP::partial_derivative(const Eigen:
 	return dJ;
 }
 
+// void DifferentialInverseKinematicsQP::setManipImproveGains(double dyn, double th)
+// {
+//     improve_manip_dyn_ = dyn;
+//     improve_manip_th_  = th;
+// }
 
 
 #endif /* DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP */

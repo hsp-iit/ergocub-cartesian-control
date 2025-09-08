@@ -6,15 +6,8 @@
 #include <yarp/os/LogStream.h>
 #include <yarp/eigen/Eigen.h>
 
-bool Module::configureService(const yarp::os::ResourceFinder &rf)
+bool Module::configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name)
 {
-    if (!rf.check("rpc_local_port_name") || !rf.find("rpc_local_port_name").isString())
-    {
-        yError() << module_name_ + "::configureService(). Error: missing or invalid rpc_port_name parameter.";
-        return false;
-    }
-
-    std::string rpc_port_name = rf.find("rpc_local_port_name").asString();
 
     if (!rpc_cmd_port_.open(rpc_port_name))
     {
