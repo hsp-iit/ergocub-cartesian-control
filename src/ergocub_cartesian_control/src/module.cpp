@@ -169,7 +169,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (!(utils::checkParameters({{"limits_param"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, false) &&
               (IK_PARAM_bot.find("limits_param").asFloat64() >= 0.0) && (IK_PARAM_bot.find("limits_param").asFloat64() <= 1.0)) ||
             !utils::checkParameters({{"max_joint_position_variation", "max_joint_position_track_error"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, false) ||
-            !utils::checkParameters({{"joint_acc_weight", "position_param", "orientation_param", "joint_pos_param"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, true))
+            !utils::checkParameters({{"joint_acc_weight", "position_param", "orientation_param", "joint_pos_param"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, true) ||
+            !utils::checkParameters({{"torso_joints_to_stiffen"}}, "", IK_PARAM_bot, "", utils::ParameterType::Int8, false))
         {
             yError() << module_name_ + "::configure(). Error: mandatory parameter(s) for IK_PARAM group missing or invalid.";
             return false;
@@ -190,6 +191,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
         Eigen::VectorXd joint_pos_param;
         extractFromBottle(*IK_PARAM_bot.find("joint_pos_param").asList(), joint_pos_param);
+
+        int torso_joints_to_stiffen = IK_PARAM_bot.find("torso_joints_to_stiffen").asInt8();
 
         max_joint_position_variation_ =  IK_PARAM_bot.find("max_joint_position_variation").asFloat64();
 
@@ -231,7 +234,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         ik_joint_acc_ = Eigen::VectorXd::Zero(cub_joint_control_.getNumberJoints());
 
         /* Set ik solver. */
-        ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, qp_verbose, improve_manip_dyn, improve_manip_th);
+        ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, improve_manip_dyn, improve_manip_th, torso_joints_to_stiffen, qp_verbose);
         ik_->set_joint_limits(lower_limits, upper_limits, limits_param * Eigen::VectorXd::Ones(upper_limits.size()));
         // ik_->setManipImproveGains(improve_manip_dyn, improve_manip_th);
     }
