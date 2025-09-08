@@ -113,7 +113,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return false;
 
     yarp::os::Bottle FSM_PARAM_bot;
-    if (!groupCheckAndRetrieve(COMMON_bot, "FSM_PARAM", FSM_PARAM_bot))
+    if (!groupCheckAndRetrieve(rf, "FSM_PARAM", FSM_PARAM_bot))
         return false;
 
     yarp::os::Bottle ARM_bot;
@@ -123,7 +123,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     
 
     yarp::os::Bottle IK_PARAM_bot;
-    if (!groupCheckAndRetrieve(COMMON_bot, "IK_PARAM", IK_PARAM_bot))
+    if (!groupCheckAndRetrieve(rf, "IK_PARAM", IK_PARAM_bot))
         return false;
 
     
@@ -170,7 +170,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
               (IK_PARAM_bot.find("limits_param").asFloat64() >= 0.0) && (IK_PARAM_bot.find("limits_param").asFloat64() <= 1.0)) ||
             !utils::checkParameters({{"max_joint_position_variation", "max_joint_position_track_error"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, false) ||
             !utils::checkParameters({{"joint_acc_weight", "position_param", "orientation_param", "joint_pos_param"}}, "", IK_PARAM_bot, "", utils::ParameterType::Float64, true) ||
-            !utils::checkParameters({{"torso_joints_to_stiffen"}}, "", IK_PARAM_bot, "", utils::ParameterType::Int8, false))
+            !utils::checkParameters({{"torso_joints_to_stiffen"}}, "", IK_PARAM_bot, "", utils::ParameterType::Int32, false))
         {
             yError() << module_name_ + "::configure(). Error: mandatory parameter(s) for IK_PARAM group missing or invalid.";
             return false;
@@ -192,7 +192,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         Eigen::VectorXd joint_pos_param;
         extractFromBottle(*IK_PARAM_bot.find("joint_pos_param").asList(), joint_pos_param);
 
-        int torso_joints_to_stiffen = IK_PARAM_bot.find("torso_joints_to_stiffen").asInt8();
+        int torso_joints_to_stiffen = IK_PARAM_bot.find("torso_joints_to_stiffen").asInt32();
 
         max_joint_position_variation_ =  IK_PARAM_bot.find("max_joint_position_variation").asFloat64();
 
