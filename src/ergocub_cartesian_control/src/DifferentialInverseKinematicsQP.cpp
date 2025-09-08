@@ -392,8 +392,9 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
         else{dmdq(i) = manip/2 * (JJT_ldlt.solve( partial_derivative(jacobian_,i)*jacobian_.transpose() )).trace();}
     }
 
-    yDebug() << "gain: " << improve_manip_dyn_ ;
-    yDebug() << "gain: " << improve_manip_th_;
+    yDebugThrottle(2) << "Manipolability gain: " << improve_manip_dyn_ ;
+    yDebugThrottle(2) << "Manipolability gain: " << improve_manip_th_;
+    
     if (manip <= improve_manip_th_)
     {
         std::cout << "\n\n\nmanip <= improve_manip_th_ "<< manip << " <= " << improve_manip_th_ <<"\n\n\n";
@@ -465,12 +466,5 @@ Eigen::MatrixXd DifferentialInverseKinematicsQP::partial_derivative(const Eigen:
 
 	return dJ;
 }
-
-// void DifferentialInverseKinematicsQP::setManipImproveGains(double dyn, double th)
-// {
-//     improve_manip_dyn_ = dyn;
-//     improve_manip_th_  = th;
-// }
-
 
 #endif /* DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP */
