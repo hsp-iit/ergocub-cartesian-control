@@ -35,7 +35,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
-    bottle_group_out = src.findGroup(group_name_in);  // copia profonda
+    bottle_group_out = src.findGroup(group_name_in);  // deep copy
     return true;
     };
 
@@ -58,8 +58,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return false;
 
     if  (   !(utils::checkParameters({{"rate", "traj_duration", "position_error_th"}}, "", COMMON_bot, "", utils::ParameterType::Float64, false))
-        ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
-        /*||  !(utils::checkParameters({{"rpc_local_port_name" }}, "", COMMON_bot, "", utils::ParameterType::String, false))*/)
+        ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false)) )
     {
         yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for COMMON group missing or invalid.";
         return false;
@@ -233,7 +232,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         /* Set ik solver. */
         ik_ = std::make_unique<DifferentialInverseKinematicsQP>(sample_time_, limits_param, joint_acc_weight, position_param, orientation_param, joint_pos_param, *joint_home_values_, qp_verbose, improve_manip_dyn, improve_manip_th);
         ik_->set_joint_limits(lower_limits, upper_limits, limits_param * Eigen::VectorXd::Ones(upper_limits.size()));
-        // ik_->setManipImproveGains(improve_manip_dyn, improve_manip_th);
     }
 
     /* Instantiate iDynTree-based forward kinematics. */
