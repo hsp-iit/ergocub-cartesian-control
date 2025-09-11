@@ -6,7 +6,16 @@ channels:
   - conda-forge
   - https://repo.prefix.dev/robotology
 dependencies:
+  - python>=3.10
+  - pip
   - yarp==3.12.0
   - proxsuite==0.7.2
+  - simde  # header-only dependency required by proxsuite's CMake (FindSimde)
   - idyntree==13.4.2
   - bipedal-locomotion-framework==0.22.0 # for logging
+  # For building the Python bindings
+  - cmake>=3.16
+  - ninja
+  - pybind11>=2.10
+  - pip:
+      - scikit-build-core>=0.9
