@@ -60,7 +60,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
     bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
 
-    /* Abilitazioni opzionali delle chain */
+    /* Enabling of the chains is optional */
     right_enabled_ = rf.check("RIGHT_ARM");
     left_enabled_  = rf.check("LEFT_ARM");
     torso_enabled_ = rf.check("TORSO");
@@ -71,7 +71,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
-    /* right_arm.ini (opzionale) */
+    /* right_arm.ini (optional) */
     yarp::os::Bottle RIGHT_ARM_bot;
     if (right_enabled_)
     {
@@ -87,7 +87,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
     }
 
-    /* left_arm.ini (opzionale) */
+    /* left_arm.ini (optional) */
     yarp::os::Bottle LEFT_ARM_bot;
     if (left_enabled_)
     {
@@ -103,7 +103,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
     }
 
-    /* torso.ini (opzionale) */
+    /* torso.ini (optional) */
     yarp::os::Bottle TORSO_bot;
     if (torso_enabled_)
     {
@@ -255,7 +255,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
             appendOrInit(joint_home, *left_arm_.joint_pos);
         }
-        // TORSO (solo joint terms)
+        // TORSO (only joint terms)
         if (torso_enabled_)
         {
             appendOrInit(joint_limits_params, Eigen::Vector<double,1>(TORSO_bot.find("joint_limits_param").asFloat64()));
@@ -268,7 +268,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendOrInit(joint_home, *torso_.joint_pos);
         }
 
-        // Pesi cartesiani: mantieni dimensione fissa 2 (Right, Left). Se una EE è disabilitata → peso/gain = 0.
+        // Cartesian weights: the dimension is fixed to 2 (Right and Left). If one EE is not enabled --> weight/gain = 0.
         auto s = [](double v) { Eigen::Vector<double,1> x; x << v; return x; };
 
         if (right_enabled_)
@@ -321,8 +321,11 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
                               manip_ws.push_back(LEFT_ARM_bot.find("improve_manip_weight").asFloat64()); }
 
         compound_chain_.stop_vel = stop_vels.empty() ? 1e-3 : *std::min_element(stop_vels.begin(), stop_vels.end());
-        double improve_manip_weight = manip_ws.empty() ? 0.0 : *std::min_element(manip_ws.begin(), manip_ws.end());
 
+        // If manip_ws is empty --> improve_manip_weight = 0.0, otherwise compute the minimum value
+        double improve_manip_weight = manip_ws.empty() ? 0.0 : *std::min_element(manip_ws.begin(), manip_ws.end());
+        
+        // If enabled compute the number of joints for each chain otherwise set to 0
         int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
         int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
         int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
@@ -494,15 +497,14 @@ bool Module::updateModule()
         refFksUpdate();
         
         ikUpdate();
-        yDebug() << "[" + module_name_ + "::IKUPDATE() FATTO.";
         setDesiredTrajectory();
-        yDebug() << "[" + module_name_ + "::SETDESIREDTRAJ() FATTO.";
+
         if(!solveIkAndUpdateIntegrators())
         {
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
             return false;
         }
-        yDebug() << "[" + module_name_ + "::solveIkAndUpdateIntegrators() FATTO.";
+        
         if (!encodersRefUpdate())
         {
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
@@ -533,7 +535,7 @@ bool Module::updateModule()
 
 bool Module::encodersMeasUpdate()
 {
-    // Leggi solo le chain abilitate
+    // Read only the enabled chains
     if (right_enabled_)
     {
         right_arm_.joint_pos = right_arm_.cjc.getJointValues();
@@ -603,7 +605,7 @@ bool Module::encodersMeasUpdate()
         }
     }
 
-    // Aggiorna i vettori joints misurati delle chain (arm + torso se presente)
+    // Update the vectors of the measured joints of the chains (arms + torso)
     if (right_enabled_)
     {
         if (torso_enabled_)
@@ -723,8 +725,13 @@ bool Module::measFksUpdate()
 
 bool Module::checkAndReadNewInputs()
 {
-    // L’input può contenere 0/1/2 EE (right/left): 7 per EE per le pose, +6 per EE per le vel, +6 per EE per le acc.
-    // Formati accettati: 7*ee, 13*ee, 19*ee.
+
+    /*
+    * The input can contain zero, one or two end effectors, the dimension of the input vector is:
+    * - 7 for each EE for the pose (position + quaternion)
+    * - 6 for each EE for the linear and angular velocity
+    * The accepted formats are: 7*ee, 13*ee, 19*ee.
+    */
     auto setPoseRight = [&](const Eigen::VectorXd& r_pose)
     {
         right_desired_pose_ = Eigen::Translation3d(r_pose.head(3));
@@ -810,7 +817,7 @@ bool Module::checkAndReadNewInputs()
     }
     else
     {
-        // ricevuto formato inatteso: mantieni le pose correnti e azzera vel/acc
+        // The received format is not correct: remain in the actual pose and set the velocities and the accelerations to zero
         zeroVel();
         zeroAcc();
         yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received wrong inputs. Keeping last desired poses.";
@@ -845,7 +852,7 @@ void Module::ikUpdate()
     J0.setZero();
     Eigen::VectorXd b0 = Eigen::VectorXd::Zero(6);
 
-    // RIGHT (valori, non reference)
+    // RIGHT (values, non reference)
     Eigen::Affine3d  rT  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_transform() : I;
     Eigen::Vector3d  rVl = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_lin_vel()   : z3;
     Eigen::Vector3d  rVa = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_ang_vel()   : z3;
@@ -854,7 +861,7 @@ void Module::ikUpdate()
     Eigen::MatrixXd  rJ  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_jacobian()     : J0;
     Eigen::VectorXd  rB  = (right_enabled_ && right_chain_.refFk) ? right_chain_.refFk->get_ee_bias_acc()  : b0;
 
-    // LEFT (valori, non reference)
+    // LEFT (values, non reference)
     Eigen::Affine3d  lT  = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_transform() : I;
     Eigen::Vector3d  lVl = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_lin_vel()   : z3;
     Eigen::Vector3d  lVa = (left_enabled_ && left_chain_.refFk) ? left_chain_.refFk->get_ee_ang_vel()   : z3;
@@ -897,7 +904,6 @@ void Module::setDesiredTrajectory()
 bool Module::solveIkAndUpdateIntegrators()
 {
     qp_result_ = compound_chain_.ik->solve();
-    yDebug() << "[" + module_name_ + "::solve() FATTO.";
 
     if (!qp_result_.has_value())
     {
@@ -974,7 +980,6 @@ bool Module::isMotionDone()
 void Module::setState(const State &des_state)
 {
     const std::lock_guard<std::mutex> lock(mutex_);
-    yDebug() << "SKIBIDIPIPPI SEI DENTRO SET STATE";
     state_ = des_state;
 }
 

@@ -475,12 +475,12 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
         }
     }
 
-    /* --- Vincoli limiti --- */
+    /* --- Add limiter contribution to the constraint --- */
     Eigen::MatrixXd G_limiter;
     Eigen::VectorXd h_limiter;
     std::tie(G_limiter, h_limiter) = limit_constraint(joints_, joints_lower_limits_, joints_upper_limits_, joints_limits_gains_);
 
-    /* --- Risoluzione QP --- */
+    /* --- QP Resolution --- */
     qp_results_ = solve_qp(P, q, G_limiter, h_limiter);
     return qp_results_;
 }
