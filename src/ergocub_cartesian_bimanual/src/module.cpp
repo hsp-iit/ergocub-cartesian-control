@@ -59,6 +59,11 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
     bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
+    no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
+    if (no_control_)
+    {
+        joints_pos_port_.open(("/" + module_name_ + "/joints_pos:o").c_str());
+    }
 
     /* Enabling of the chains is optional */
     right_enabled_ = rf.check("RIGHT_ARM");
@@ -459,6 +464,7 @@ bool Module::close()
 {
     rpc_cmd_port_.close();
     bp_cmd_port_.close();
+    joints_pos_port_.close();
 
     return true;
 }
@@ -472,6 +478,7 @@ bool Module::interruptModule()
 {
     rpc_cmd_port_.interrupt();
     bp_cmd_port_.interrupt();
+    joints_pos_port_.interrupt();
 
     return true;
 }
@@ -510,13 +517,14 @@ bool Module::updateModule()
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
             return false;
         }
-
-        if(!moveChains())
+        if (!no_control_)
         {
-            yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
-            return false;
+            if(!moveChains())
+            {
+                yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+                return false;
+            }
         }
-
         if(isMotionDone())
         {
             compound_chain_.vel2pos_integrator->set_initial_condition(compound_chain_.joints.pos);
@@ -525,6 +533,16 @@ bool Module::updateModule()
         }
 
     }
+
+    if (no_control_)
+    {
+        yarp::sig::Vector& out = joints_pos_port_.prepare();
+        out.resize(compound_chain_.joints.pos.size());
+        for (size_t i = 0; i < out.size(); ++i)
+            out[i] = compound_chain_.joints.pos[i];
+        joints_pos_port_.write();
+    }
+    
 
     if (module_logging_ || module_verbose_)
         verboseAndLog();
