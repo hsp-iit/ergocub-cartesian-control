@@ -6,7 +6,7 @@ This repository contains the code for single arm controllers for the ergoCub and
 Documentation
 -------------
 
-Full documentation available at [hsp.github.io/ergocub-cartesian-control](hsp.github.io/ergocub-cartesian-control)
+Full documentation available at [hsp-iit.github.io/ergocub-cartesian-control](hsp-iit.github.io/ergocub-cartesian-control)
 
 
 Installation
