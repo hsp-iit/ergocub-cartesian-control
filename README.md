@@ -54,4 +54,5 @@ This repository is maintained by:
 |:---:|:---:|
 | [<img src="https://github.com/fbrand-new.png" width="40">](https://github.com/fbrand-new) | [@fbrand-new](https://github.com/fbrand-new) |
 | [<img src="https://github.com/PasMarra.png" width="40">](https://github.com/PasMarra) | [@PasMarra](https://github.com/PasMarra) |
+| [<img src="https://github.com/fincatomarta.png" width="40">](https://github.com/fincatomarta) | [@fincatomarta](https://github.com/fincatomarta) |
 | [<img src="https://github.com/randaz81.png" width="40">](https://github.com/randaz81) | [@randaz81](https://github.com/randaz81) |
