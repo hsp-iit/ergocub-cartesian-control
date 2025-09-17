@@ -73,11 +73,6 @@ public:
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
         const Eigen::Ref<const Eigen::VectorXd> &gains) override;
 
-    // /* ---- Manipulability gains ---- */
-    // void setManipImproveGains(double dyn, double th);
-    // double getManipImproveDyn() const { return improve_manip_dyn_; }
-    // double getManipImproveTh()  const { return improve_manip_th_;  }
-
 protected:
     /**
      * Implement limits as described in:
