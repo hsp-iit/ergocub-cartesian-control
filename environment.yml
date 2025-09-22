@@ -17,5 +17,6 @@ dependencies:
   - cmake>=3.16
   - ninja
   - pybind11>=2.10
+  - cxx-compiler==1.11.0
   - pip:
       - scikit-build-core>=0.9
