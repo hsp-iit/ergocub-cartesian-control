@@ -1,0 +1,42 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.9",
+  "pybind11>=2.10",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pysquale"
+version = "0.0.1"
+description = "YARP-free bimanual IK bindings for ergoCub"
+readme = "README.md"
+authors = [{ name = "IIT HSP" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+dependencies = [
+  "clearconf",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: POSIX :: Linux",
+]
+
+[tool.scikit-build]
+cmake.version = ">=3.16"
+build.verbose = true
+cmake.build-type = "Release"
+wheel.expand-macos-universal-tags = true
+# Point scikit-build to the CMake project for the Python module
+cmake.source-dir = "src/ergocub_cartesian_bimanual"
+
+[tool.scikit-build.sdist]
+include = [
+  "src/ergocub_cartesian_bimanual/CMakeLists.txt",
+  "src/ergocub_cartesian_bimanual/include/**",
+  "src/ergocub_cartesian_bimanual/src/**",
+  "src/ergocub_cartesian_bimanual/python/pybind_module.cpp",
+  "LICENSE",
+  "README.md",
+]
