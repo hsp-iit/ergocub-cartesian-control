@@ -1,2 +1,0 @@
-include/mc-ergocub-bimanual-service/ergoCubBimanualService.h
-src/ergoCubBimanualService.cpp
