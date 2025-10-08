@@ -70,6 +70,12 @@ target_link_libraries(ergocub_cartesian_bimanual_core PUBLIC
   proxsuite::proxsuite
 )
 
+# Install the core library - REQUIRED for the executable to work!
+install(TARGETS ergocub_cartesian_bimanual_core
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
+
 ## Executable (guarded)
 if(BUILD_BIMANUAL_EXECUTABLE)
   # Ensure required targets from the superproject exist, otherwise skip

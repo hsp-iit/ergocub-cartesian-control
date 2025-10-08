@@ -43,6 +43,13 @@ add_subdirectory(src/ergocub_bimanual_service)
 # Add bimanual control module
 add_subdirectory(src/ergocub_cartesian_bimanual)
 
+# Add finger controller
+add_subdirectory(src/ergocub_finger_controller)
+
+# Add head service and controller
+add_subdirectory(src/ergocub_head_service)
+add_subdirectory(src/ergocub_head_controller)
+
 
 # Add standard uninstall target
 include(AddUninstallTarget)
