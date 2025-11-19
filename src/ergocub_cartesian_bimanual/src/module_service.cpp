@@ -30,6 +30,45 @@ bool Module::attach(yarp::os::Port &source)
     return this->yarp().attachAsServer(source);
 }
 
+bool Module::flat_go_to_pose(double x, double y, double z, double m1, double m2, double m3, double m4, double m5, double m6, double m7, double m8, double m9, const std::string& arm)
+{    
+
+    Eigen::Affine3d target_pose;
+    target_pose = Eigen::Translation3d(x, y, z);
+    Eigen::Matrix3d rotation;
+    rotation << m1, m2, m3,
+                m4, m5, m6,
+                m7, m8, m9;
+    target_pose.rotate(rotation);
+
+    if(strcmp(arm.c_str(), "right")==0)
+    {
+        if (right_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::flat_go_to_pose] Right arm is not enabled.";
+            return false;
+        }
+        right_desired_pose_ = target_pose;
+    }
+    else if(strcmp(arm.c_str(), "left")==0)
+    {
+        if (left_enabled_ == false)
+        {
+            yError() << "[" + module_name_ + "::flat_go_to_pose] Left arm is not enabled.";
+            return false;
+        }
+        left_desired_pose_ = target_pose;
+    }
+    else
+    {
+        yError() << "[" + module_name_ + "::flat_go_to_pose] Error: invalid arm name.";
+        return false;
+    }
+
+    setState(State::Running);
+    return true;
+}
+
 bool Module::go_to_pose(double x, double y, double z, double q_x, double q_y, double q_z, double q_w, const std::string& arm)
 {    
 

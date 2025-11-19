@@ -39,6 +39,8 @@ public:
     /* CartesianService interface */
     bool go_to_pose(double x, double y, double z, double q_x, double q_y, double q_z, double q_w, const std::string& arm);
 
+    bool flat_go_to_pose(double x, double y, double z, double m1, double m2, double m3, double m4, double m5, double m6, double m7, double m8, double m9, const std::string& arm);
+
     bool go_to_position(double x, double y, double z, const std::string& arm);
 
     bool rotate_deg(double angle, double x, double y, double z, const std::string& arm);
