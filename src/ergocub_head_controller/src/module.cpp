@@ -150,7 +150,7 @@ bool Module::updateModule()
             std::lock_guard<std::mutex> lg(mutex_);
 
             /* Update inverse kinematics. */
-            ik_.setGazerState(meas_.q_a, meas_.q_na, meas_.dq_na, fk_.getJacobianActuatedJoints(), fk_.getJacobianUnactuatedJoints(), fk_.getTransform());
+            ik_.setGazerState(ref_.q_a, meas_.q_na, meas_.dq_na, fk_.getJacobianActuatedJoints(), fk_.getJacobianUnactuatedJoints(), fk_.getTransform());
             ik_.setDesiredGazingOrientation(R_desired_);
         }
 
@@ -227,7 +227,7 @@ bool Module::updateForwardKinematics()
 {
     std::lock_guard<std::mutex> lg(mutex_);
 
-    if(!fk_.setJoints(meas_.q_na, meas_.q_a))
+    if(!fk_.setJoints(meas_.q_na, ref_.q_a))
     {
         yError() << module_name_ + "::updateForwardKinematics(). Error: cannot set joints.";
         return false;
