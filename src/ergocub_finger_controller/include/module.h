@@ -7,6 +7,7 @@
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/dev/IEncoders.h>
 #include <yarp/dev/IPositionControl.h>
+#include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/IControlMode.h>
 #include <string>
 #include <vector>
@@ -39,6 +40,8 @@ private:
     yarp::dev::IEncoders* m_rightEncoders;
     yarp::dev::IPositionControl* m_leftPositionControl;
     yarp::dev::IPositionControl* m_rightPositionControl;
+    yarp::dev::IPositionDirect* m_leftPositionDirect;
+    yarp::dev::IPositionDirect* m_rightPositionDirect;
     yarp::dev::IControlMode* m_leftControlMode;
     yarp::dev::IControlMode* m_rightControlMode;
 
@@ -60,6 +63,10 @@ private:
     bool m_isActive;
     bool m_useLeftHand;
     bool m_useRightHand;
+
+    // Speed configuration
+    double m_fingerSpeed;
+    std::vector<double> m_lastSentPositions;
 };
 
 } // namespace controller
