@@ -485,10 +485,23 @@ bool Module::interruptModule()
 
 bool Module::updateModule()
 {
-    if (!encodersMeasUpdate())
     {
-        yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
-        return false;
+        constexpr int max_retries = 5;
+        constexpr auto retry_delay = std::chrono::milliseconds(10);
+        int attempt = 0;
+        bool success = false;
+        while (attempt < max_retries) {
+            if (encodersMeasUpdate()) {
+                success = true;
+                break;
+            }
+            std::this_thread::sleep_for(retry_delay);
+            ++attempt;
+        }
+        if (!success) {
+            yError()<< "[" + module_name_ + "::updateModule] See error(s) above after " << max_retries << " attempts.";
+            return false;
+        }
     }
 
     measFksUpdate();
