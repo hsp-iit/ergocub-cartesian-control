@@ -485,6 +485,8 @@ bool Module::interruptModule()
 
 bool Module::updateModule()
 {
+    checkAndReadRpcCommands();
+
     {
         constexpr int max_retries = 5;
         constexpr auto retry_delay = std::chrono::milliseconds(10);

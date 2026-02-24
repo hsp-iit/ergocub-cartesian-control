@@ -3,6 +3,8 @@
 
 #include <yarp/os/RFModule.h>
 #include <yarp/sig/Vector.h>
+#include <yarp/os/Bottle.h>
+#include <yarp/os/BufferedPort.h>
 
 #include <forwardKinematics.h>
 #include <inverseKinematics.h>
@@ -48,6 +50,7 @@ private:
 
     /* Thrift service configuration. */
     bool configureService(const yarp::os::ResourceFinder& rf);
+    bool checkAndReadRpcCommands();
 
     /* Robot input / output. */
     IO robot_;
@@ -79,8 +82,8 @@ private:
     State state_ = State::Idle;
     std::mutex mutex_;
 
-    /* RPC port. */
-    yarp::os::Port port_rpc_;
+    /* RPC command port. */
+    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_;
 
     /* Module running rate. */
     double rate_;

@@ -16,12 +16,6 @@ bool Module::configureService(const yarp::os::ResourceFinder &rf, const std::str
         return false;
     }
 
-    if (!attach(rpc_cmd_port_))
-    {
-        yError() << "[" + module_name_ + "::configureService] Error: cannot attach port" << rpc_port_name;
-        return false;
-    }
-
     return true;
 }
 
@@ -240,6 +234,201 @@ bool Module::stop()
 {
     setState(State::Stop);
 
+    return true;
+}
+
+bool Module::checkAndReadRpcCommands()
+{
+    yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] Checking for RPC commands...";
+    yarp::os::Bottle* cmd = rpc_cmd_port_.read(false);
+    // print received message
+    if (cmd != nullptr)
+    {
+        yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] Received command:" << cmd->toString();
+    }
+    else
+    {
+        yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] No command received.";
+    }
+    if (cmd == nullptr)
+    {
+        return false;
+    }
+
+    if (cmd->size() == 0)
+    {
+        return true;
+    }
+
+    const std::string op = cmd->get(0).asString();
+
+    if (op == "flat_go_to_pose")
+    {
+        if (cmd->size() == 25)
+        {
+            // New format: flat_go_to_pose left(x y z m1..m9) right(x y z m1..m9)
+            flat_go_to_pose(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                            cmd->get(4).asFloat64(), cmd->get(5).asFloat64(), cmd->get(6).asFloat64(),
+                            cmd->get(7).asFloat64(), cmd->get(8).asFloat64(), cmd->get(9).asFloat64(),
+                            cmd->get(10).asFloat64(), cmd->get(11).asFloat64(), cmd->get(12).asFloat64(),
+                            "left");
+            flat_go_to_pose(cmd->get(13).asFloat64(), cmd->get(14).asFloat64(), cmd->get(15).asFloat64(),
+                            cmd->get(16).asFloat64(), cmd->get(17).asFloat64(), cmd->get(18).asFloat64(),
+                            cmd->get(19).asFloat64(), cmd->get(20).asFloat64(), cmd->get(21).asFloat64(),
+                            cmd->get(22).asFloat64(), cmd->get(23).asFloat64(), cmd->get(24).asFloat64(),
+                            "right");
+            return true;
+        }
+
+        else if (cmd->size() < 14)
+        {
+            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] flat_go_to_pose expects 25 elements, got" << cmd->size();
+            return true;
+        }
+
+        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] flat_go_to_pose invalid size"
+                   << cmd->size() << "(supported: 14 legacy, 25 bimanual left+right)";
+        return true;
+    }
+
+    if (op == "go_to_pose")
+    {
+        if (cmd->size() == 9)
+        {
+            // Legacy format: go_to_pose x y z qx qy qz qw arm
+            go_to_pose(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), cmd->get(5).asFloat64(), cmd->get(6).asFloat64(),
+                       cmd->get(7).asFloat64(), cmd->get(8).asString());
+            return true;
+        }
+
+        if (cmd->size() == 15)
+        {
+            // New format: go_to_pose left(x y z qx qy qz qw) right(x y z qx qy qz qw)
+            go_to_pose(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), cmd->get(5).asFloat64(), cmd->get(6).asFloat64(),
+                       cmd->get(7).asFloat64(), "left");
+            go_to_pose(cmd->get(8).asFloat64(), cmd->get(9).asFloat64(), cmd->get(10).asFloat64(),
+                       cmd->get(11).asFloat64(), cmd->get(12).asFloat64(), cmd->get(13).asFloat64(),
+                       cmd->get(14).asFloat64(), "right");
+            return true;
+        }
+
+        if (cmd->size() < 9)
+        {
+            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_pose expects 9 elements, got" << cmd->size();
+            return true;
+        }
+
+        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_pose invalid size"
+                   << cmd->size() << "(supported: 9 legacy, 15 bimanual left+right)";
+        return true;
+    }
+
+    if (op == "go_to_position")
+    {
+        if (cmd->size() == 5)
+        {
+            // Legacy format: go_to_position x y z arm
+            go_to_position(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                           cmd->get(4).asString());
+            return true;
+        }
+
+        if (cmd->size() == 7)
+        {
+            // New format: go_to_position left(x y z) right(x y z)
+            go_to_position(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(), "left");
+            go_to_position(cmd->get(4).asFloat64(), cmd->get(5).asFloat64(), cmd->get(6).asFloat64(), "right");
+            return true;
+        }
+
+        if (cmd->size() < 5)
+        {
+            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_position expects 5 elements, got" << cmd->size();
+            return true;
+        }
+
+        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_position invalid size"
+                   << cmd->size() << "(supported: 5 legacy, 7 bimanual left+right)";
+        return true;
+    }
+
+    if (op == "rotate_deg")
+    {
+        if (cmd->size() == 6)
+        {
+            // Legacy format: rotate_deg angle x y z arm
+            rotate_deg(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), cmd->get(5).asString());
+            return true;
+        }
+
+        if (cmd->size() == 11)
+        {
+            // New format: rotate_deg left(angle x y z) right(angle x y z)
+            rotate_deg(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), "left");
+            rotate_deg(cmd->get(5).asFloat64(), cmd->get(6).asFloat64(), cmd->get(7).asFloat64(),
+                       cmd->get(8).asFloat64(), "right");
+            return true;
+        }
+
+        if (cmd->size() < 6)
+        {
+            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_deg expects 6 elements, got" << cmd->size();
+            return true;
+        }
+
+        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_deg invalid size"
+                   << cmd->size() << "(supported: 6 legacy, 11 bimanual left+right)";
+        return true;
+    }
+
+    if (op == "rotate_rad")
+    {
+        if (cmd->size() == 6)
+        {
+            // Legacy format: rotate_rad angle x y z arm
+            rotate_rad(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), cmd->get(5).asString());
+            return true;
+        }
+
+        if (cmd->size() == 11)
+        {
+            // New format: rotate_rad left(angle x y z) right(angle x y z)
+            rotate_rad(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                       cmd->get(4).asFloat64(), "left");
+            rotate_rad(cmd->get(5).asFloat64(), cmd->get(6).asFloat64(), cmd->get(7).asFloat64(),
+                       cmd->get(8).asFloat64(), "right");
+            return true;
+        }
+
+        if (cmd->size() < 6)
+        {
+            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_rad expects 6 elements, got" << cmd->size();
+            return true;
+        }
+
+        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_rad invalid size"
+                   << cmd->size() << "(supported: 6 legacy, 11 bimanual left+right)";
+        return true;
+    }
+
+    if (op == "go_home")
+    {
+        go_home();
+        return true;
+    }
+
+    if (op == "stop")
+    {
+        stop();
+        return true;
+    }
+
+    yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] Unknown command:" << op;
     return true;
 }
 

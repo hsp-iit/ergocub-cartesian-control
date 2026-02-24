@@ -6,6 +6,8 @@
 #include <yarp/os/RFModule.h>
 #include <yarp/sig/Vector.h>
 #include <yarp/os/Port.h>
+#include <yarp/os/Bottle.h>
+#include <yarp/os/BufferedPort.h>
 
 #include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
 
@@ -66,7 +68,7 @@ private:
     bool module_logging_;
     bool module_verbose_;
     bool use_torso_;
-    yarp::os::Port rpc_cmd_port_;
+    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_;
     yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_;
     yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_;
     bool no_control_{false};
@@ -117,6 +119,7 @@ private:
     bool isMotionDone();
 
     /* Control input*/
+    bool checkAndReadRpcCommands();
     bool checkAndReadNewInputs();
     Eigen::Affine3d right_desired_pose_, left_desired_pose_;
     Eigen::Vector3d right_desired_lin_vel_, right_desired_ang_vel_, right_desired_lin_acc_, right_desired_ang_acc_;
