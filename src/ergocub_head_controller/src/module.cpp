@@ -107,8 +107,7 @@ bool Module::configure(yarp::os::ResourceFinder& rf)
 
 bool Module::close()
 {
-    if (port_rpc_.isOpen())
-        port_rpc_.close();
+    rpc_cmd_port_.close();
 
     return true;
 }
@@ -122,12 +121,16 @@ double Module::getPeriod()
 
 bool Module::interruptModule()
 {
+    rpc_cmd_port_.interrupt();
+
     return true;
 }
 
 
 bool Module::updateModule()
 {
+    checkAndReadRpcCommands();
+
     /* Read encoders. */
     if(     !updateEncoders()
         ||  !updateForwardKinematics())

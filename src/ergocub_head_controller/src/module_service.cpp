@@ -12,18 +12,69 @@ bool Module::configureService(const yarp::os::ResourceFinder& rf)
 {
     std::string rpc_port_name = rf.check("rpc_port_name", yarp::os::Value("/" + module_name_ + "/rpc:i")).asString();
 
-    if (!port_rpc_.open(rpc_port_name))
+    if (!rpc_cmd_port_.open(rpc_port_name))
     {
         yError() << module_name_ + "::configureService(). Error: cannot open port" << rpc_port_name;
         return false;
     }
 
-    if (!this->yarp().attachAsServer(port_rpc_))
+    return true;
+}
+
+bool Module::checkAndReadRpcCommands()
+{
+    yarp::os::Bottle* cmd = rpc_cmd_port_.read(false);
+    if (cmd == nullptr)
     {
-        yError() << module_name_ + "::configureService(). Error: cannot attach port" << rpc_port_name;
         return false;
     }
 
+    if (cmd->size() == 0)
+    {
+        return true;
+    }
+
+    const std::string op = cmd->get(0).asString();
+
+    if (op == "setOrientationFlat" || op == "set_orientation_flat")
+    {
+        if (cmd->size() < 10)
+        {
+            yWarning() << module_name_ + "::checkAndReadRpcCommands(). setOrientationFlat expects 10 elements, got" << cmd->size();
+            return true;
+        }
+
+        setOrientationFlat(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(),
+                           cmd->get(4).asFloat64(), cmd->get(5).asFloat64(), cmd->get(6).asFloat64(),
+                           cmd->get(7).asFloat64(), cmd->get(8).asFloat64(), cmd->get(9).asFloat64());
+        return true;
+    }
+
+    if (op == "rotateAxisAngle" || op == "rotate_axis_angle")
+    {
+        if (cmd->size() < 5)
+        {
+            yWarning() << module_name_ + "::checkAndReadRpcCommands(). rotateAxisAngle expects 5 elements, got" << cmd->size();
+            return true;
+        }
+
+        rotateAxisAngle(cmd->get(1).asFloat64(), cmd->get(2).asFloat64(), cmd->get(3).asFloat64(), cmd->get(4).asFloat64());
+        return true;
+    }
+
+    if (op == "goHome" || op == "go_home")
+    {
+        goHome();
+        return true;
+    }
+
+    if (op == "stop")
+    {
+        stop();
+        return true;
+    }
+
+    yWarning() << module_name_ + "::checkAndReadRpcCommands(). Unknown command:" << op;
     return true;
 }
 
