@@ -1,0 +1,1204 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://hsp-iit.github.io/ergocub-cartesian-control/ControlInterface/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>Control Interface - ergoCub Cartesian Control</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#control-interface" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ergoCub Cartesian Control" class="md-header__button md-logo" aria-label="ergoCub Cartesian Control" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ergoCub Cartesian Control
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Control Interface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Control Interface
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ergoCub Cartesian Control" class="md-nav__button md-logo" aria-label="ergoCub Cartesian Control" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ergoCub Cartesian Control
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Control Interface
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Control Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starting-the-controllers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting the Controllers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Starting the Controllers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ergocub-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ergoCub Controller
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r1-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R1 Controller
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rpc-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RPC Interface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RPC Interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connecting-to-the-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting to the Controller
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Available Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-go-to-pose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Go to Pose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-go-to-position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Go to Position
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-rotate-around-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Rotate Around Axis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-go-home" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Go Home
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-get-current-pose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Get Current Pose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-motion-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Motion Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-stop-motion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Stop Motion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-reachability-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Reachability Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thrift-service-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thrift Service Interface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Thrift Service Interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinate-frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinate Frames
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#general-configuration-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Configuration Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General Configuration Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#control-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#communication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Communication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convergence-and-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convergence and Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-and-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging and Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arm-section-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ARM Section Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ARM Section Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#robot-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Robot Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ik_param-section-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IK_PARAM Section Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IK_PARAM Section Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#joint-limits-and-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Joint Limits and Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#control-weights-and-gains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control Weights and Gains
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fk_param-section-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FK_PARAM Section Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FK_PARAM Section Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kinematic-chain-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kinematic Chain Definition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fsm_param-section-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FSM_PARAM Section Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FSM_PARAM Section Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#finite-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finite State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuning-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning Guidelines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tuning Guidelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#performance-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#safety-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Considerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="control-interface">Control Interface</h1>
+<p>This document describes how to use the cartesian controllers provided by this project. The controllers allow you to command the robot arms to reach desired poses in Cartesian space using high-level commands.</p>
+<h2 id="overview">Overview</h2>
+<p>The project provides two main executables:</p>
+<ul>
+<li><strong><code>ergocub-cartesian-control</code></strong>: For controlling ergoCub robots</li>
+<li><strong><code>r1-cartesian-control</code></strong>: For controlling R1 (R1SN003)</li>
+</ul>
+<p>Both controllers provide the same interface through YARP RPC commands and implement a Thrift service for easy integration.</p>
+<h2 id="starting-the-controllers">Starting the Controllers</h2>
+<p>The user can start the controllers using the provided configurations</p>
+<h3 id="ergocub-controller">ergoCub Controller</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># For right arm</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>ergocub-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_right.ini
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># For left arm  </span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>ergocub-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_left.ini
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># For simulation (right arm)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>ergocub-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_right_sim.ini
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># For arms without torso control</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>ergocub-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_right_no_torso.ini
+</code></pre></div>
+<h3 id="r1-controller">R1 Controller</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># For right arm</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>r1-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_right.ini
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># For left arm</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>r1-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_left.ini
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># For simulation (right_arm)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>r1-cartesian-control<span class="w"> </span>--from<span class="w"> </span>config_right_sim_r1.ini
+</code></pre></div>
+<h2 id="rpc-interface">RPC Interface</h2>
+<p>The controllers expose an RPC interface for sending commands. You can connect to the RPC port and send commands directly.</p>
+<h3 id="connecting-to-the-controller">Connecting to the Controller</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Connect to the controller&#39;s RPC port</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>yarp<span class="w"> </span>rpc<span class="w"> </span>/gb-ergocub-cartesian-control/right_arm/rpc:i
+</code></pre></div>
+<h3 id="available-commands">Available Commands</h3>
+<h4 id="1-go-to-pose">1. Go to Pose</h4>
+<p>Move the end-effector to a specific pose (position + orientation):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>go_to_pose &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;qx&gt; &lt;qy&gt; &lt;qz&gt; &lt;qw&gt; &lt;duration&gt;
+</code></pre></div>
+<ul>
+<li><code>x, y, z</code>: Target position in meters (relative to robot's base frame)</li>
+<li><code>qx, qy, qz, qw</code>: Target orientation as quaternion</li>
+<li><code>duration</code>: Trajectory duration in seconds</li>
+</ul>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>go_to_pose 0.3 -0.2 0.1 0.0 0.0 0.0 1.0 5.0
+</code></pre></div></p>
+<h4 id="2-go-to-position">2. Go to Position</h4>
+<p>Move the end-effector to a specific position (keeping current orientation):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>go_to_position &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;duration&gt;
+</code></pre></div>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>go_to_position 0.4 -0.15 0.2 3.0
+</code></pre></div></p>
+<h4 id="3-rotate-around-axis">3. Rotate Around Axis</h4>
+<p>Rotate the end-effector around a specified axis:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>rotate_rad &lt;angle&gt; &lt;axis_x&gt; &lt;axis_y&gt; &lt;axis_z&gt; &lt;duration&gt;
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>rotate_deg &lt;angle&gt; &lt;axis_x&gt; &lt;axis_y&gt; &lt;axis_z&gt; &lt;duration&gt;
+</code></pre></div>
+<ul>
+<li><code>angle</code>: Rotation angle (radians for <code>rotate_rad</code>, degrees for <code>rotate_deg</code>)</li>
+<li><code>axis_x, axis_y, axis_z</code>: Rotation axis (unit vector)</li>
+</ul>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>rotate_deg 45.0 0.0 0.0 1.0 4.0  # Rotate 45° around Z-axis
+</code></pre></div></p>
+<h4 id="4-go-home">4. Go Home</h4>
+<p>Return to the predefined home position:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>go_home
+</code></pre></div>
+<h4 id="5-get-current-pose">5. Get Current Pose</h4>
+<p>Retrieve the current end-effector pose:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>get_pose
+</code></pre></div>
+<p>Returns a 4x4 homogeneous transformation matrix.</p>
+<h4 id="6-motion-status">6. Motion Status</h4>
+<p>Check if the current motion is completed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>is_motion_done
+</code></pre></div>
+<p>Returns <code>true</code> if the motion is finished, <code>false</code> otherwise.</p>
+<h4 id="7-stop-motion">7. Stop Motion</h4>
+<p>Stop the current motion:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>stop
+</code></pre></div>
+<h4 id="8-reachability-analysis">8. Reachability Analysis</h4>
+<p>Check if a pose is reachable by the robot:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>is_pose_reachable &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;qx&gt; &lt;qy&gt; &lt;qz&gt; &lt;qw&gt;
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>ask_reachability_evaluation &lt;pose_matrix&gt;
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>retrieve_reachable_pose
+</code></pre></div>
+<h2 id="thrift-service-interface">Thrift Service Interface</h2>
+<p>For programmatic access, the controllers implement a Thrift service with the same functionality. This allows easy integration from C++, Python, or other languages.</p>
+<h3 id="c-example">C++ Example</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;gb-ergocub-cartesian-service/ergoCubCartesianService.h&gt;</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;yarp/os/Network.h&gt;</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;yarp/os/RpcClient.h&gt;</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// Connect to the service</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">yarp</span><span class="o">::</span><span class="n">os</span><span class="o">::</span><span class="n">Network</span><span class="w"> </span><span class="n">yarp</span><span class="p">;</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="n">yarp</span><span class="o">::</span><span class="n">os</span><span class="o">::</span><span class="n">RpcClient</span><span class="w"> </span><span class="n">client</span><span class="p">;</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="n">client</span><span class="p">.</span><span class="n">open</span><span class="p">(</span><span class="s">&quot;/client&quot;</span><span class="p">);</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="n">yarp</span><span class="p">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&quot;/client&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/gb-ergocub-cartesian-control/right_arm/rpc:i&quot;</span><span class="p">);</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="c1">// Create service proxy</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="n">ergoCubCartesianService</span><span class="w"> </span><span class="n">service</span><span class="p">;</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="n">service</span><span class="p">.</span><span class="n">yarp</span><span class="p">().</span><span class="n">attachAsClient</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="c1">// Send commands</span>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="kt">bool</span><span class="w"> </span><span class="n">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">service</span><span class="p">.</span><span class="n">go_to_position</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">-0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="python-example">Python Example</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">yarp</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># Initialize YARP</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">yarp</span><span class="o">.</span><span class="n">Network</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="c1"># Connect to service</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">yarp</span><span class="o">.</span><span class="n">RpcClient</span><span class="p">()</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="n">client</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;/python_client&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="n">yarp</span><span class="o">.</span><span class="n">Network</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;/python_client&quot;</span><span class="p">,</span> <span class="s2">&quot;/gb-ergocub-cartesian-control/right_arm/rpc:i&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="c1"># Send command</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="n">cmd</span> <span class="o">=</span> <span class="n">yarp</span><span class="o">.</span><span class="n">Bottle</span><span class="p">()</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="n">cmd</span><span class="o">.</span><span class="n">addString</span><span class="p">(</span><span class="s2">&quot;go_to_position&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="n">cmd</span><span class="o">.</span><span class="n">addFloat64</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="n">cmd</span><span class="o">.</span><span class="n">addFloat64</span><span class="p">(</span><span class="o">-</span><span class="mf">0.2</span><span class="p">)</span> 
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="n">cmd</span><span class="o">.</span><span class="n">addFloat64</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="n">cmd</span><span class="o">.</span><span class="n">addFloat64</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="n">reply</span> <span class="o">=</span> <span class="n">yarp</span><span class="o">.</span><span class="n">Bottle</span><span class="p">()</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="n">client</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">reply</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="coordinate-frames">Coordinate Frames</h2>
+<p>The controllers work in the robot's coordinate frame. Tipically they are directed in the following way:</p>
+<ul>
+<li><strong>X-axis</strong>: Forward direction of the robot</li>
+<li><strong>Y-axis</strong>: Left direction of the robot  </li>
+<li><strong>Z-axis</strong>: Upward direction</li>
+<li><strong>Origin</strong>: <code>root_link</code> for ergoCub and <code>mobile_base_body_link</code> for R1</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<h3 id="general-configuration-parameters">General Configuration Parameters</h3>
+<h4 id="control-parameters">Control Parameters</h4>
+<ul>
+<li><strong><code>rate</code></strong> (default: <code>100.0</code>): Control loop frequency in Hz. Higher values provide smoother control but require more computational resources.</li>
+<li><strong><code>traj_duration</code></strong> (default: <code>5.0</code>): Default trajectory duration in seconds when not specified in commands.</li>
+</ul>
+<h4 id="communication">Communication</h4>
+<ul>
+<li><strong><code>rpc_local_port_name</code></strong> (e.g: <code>/gb-ergocub-cartesian-control/right_arm/rpc:i</code>): Local YARP port name for RPC communication with the controller.</li>
+</ul>
+<h4 id="convergence-and-limits">Convergence and Limits</h4>
+<ul>
+<li><strong><code>position_error_th</code></strong> (default: <code>0.0005</code>): Position convergence threshold in meters. The controller considers a motion complete when the position error is below this value.</li>
+<li><strong><code>max_iteration</code></strong> (default: <code>10000</code>): Maximum number of iterations for the inverse kinematics solver before giving up.</li>
+</ul>
+<h4 id="debugging-and-logging">Debugging and Logging</h4>
+<ul>
+<li><strong><code>module_logging</code></strong> (default: <code>true</code>): Enable data logging for analysis and debugging.</li>
+<li><strong><code>module_verbose</code></strong> (default: <code>true</code>): Enable verbose console output for debugging purposes.</li>
+<li><strong><code>qp_verbose</code></strong> (default: <code>false</code>): Enable verbose console output for the QP solver.</li>
+</ul>
+<h3 id="arm-section-parameters">ARM Section Parameters</h3>
+<h4 id="robot-configuration">Robot Configuration</h4>
+<ul>
+<li><strong><code>name</code></strong> (example: <code>left_arm</code>, <code>right_arm</code>): Identifier name for the arm being controlled.</li>
+<li><strong><code>joint_axes_list</code></strong> (example: <code>(torso_yaw_joint l_shoulder_pitch l_shoulder_roll l_shoulder_yaw l_elbow l_wrist_yaw l_wrist_roll l_wrist_pitch)</code>): Complete ordered list of joint names to control. Order matters for the control algorithm.</li>
+<li><strong><code>joint_ports_list</code></strong> (example: <code>(/cer/torso /cer/left_arm)</code>): List of YARP port names for communicating with the robot's joint interfaces.</li>
+<li><strong><code>joint_local_port</code></strong> (example: <code>/r1-cartesian-control/left_arm</code>): Local YARP port prefix for this controller instance.</li>
+</ul>
+<h3 id="ik_param-section-parameters">IK_PARAM Section Parameters</h3>
+<h4 id="joint-limits-and-constraints">Joint Limits and Constraints</h4>
+<ul>
+<li><strong><code>limits_param</code></strong> (default: <code>0.90</code>): Safety factor for joint limits (0 &lt; value &lt; 1). Reduces effective joint range to avoid hitting limits.</li>
+<li><strong><code>max_joint_position_variation</code></strong> (default: <code>25.0</code>): Maximum allowed joint position change per control cycle in degrees.</li>
+<li><strong><code>max_joint_position_track_error</code></strong> (default: <code>1.5</code>): Maximum acceptable tracking error between desired and actual joint positions in degrees.</li>
+</ul>
+<h4 id="control-weights-and-gains">Control Weights and Gains</h4>
+<ul>
+<li><strong><code>joint_vel_weight</code></strong> (default: <code>(5.0 0.0)</code>): Joint velocity cost weight and offset for the QP solver <code>(weight, offset)</code>.</li>
+<li><strong><code>position_param</code></strong> (default: <code>(20.0 0.5)</code>): Position control parameters <code>(cost_weight, proportional_gain)</code>.</li>
+<li><strong><code>orientation_param</code></strong> (default: <code>(10.0 0.5)</code>): Orientation control parameters <code>(cost_weight, proportional_gain)</code>.</li>
+<li><strong><code>joint_pos_param</code></strong> (default: <code>(2.5 10.0 5.0)</code>): Joint position control gains <code>(cost_weight, proportional_gain, derivative_gain)</code>.</li>
+</ul>
+<h4 id="reference-configuration">Reference Configuration</h4>
+<ul>
+<li><strong><code>joint_ref</code></strong> (example: <code>(0.0 0.0 0.1 0.0 0.1 0.0 0.0 0.0)</code>): Reference joint configuration used for null-space projection. Must match the number and order of joints in <code>joint_axes_list</code>.</li>
+</ul>
+<h3 id="fk_param-section-parameters">FK_PARAM Section Parameters</h3>
+<h4 id="kinematic-chain-definition">Kinematic Chain Definition</h4>
+<ul>
+<li><strong><code>root_frame_name</code></strong> (default: <code>mobile_base_body_link</code> for R1, <code>root_link</code> for ergoCub): Name of the root frame for the kinematic chain.</li>
+<li><strong><code>ee_frame_name</code></strong> (example: <code>l_hand_palm</code>, <code>r_hand_palm</code>): Name of the end-effector frame that will be controlled.</li>
+</ul>
+<h3 id="fsm_param-section-parameters">FSM_PARAM Section Parameters</h3>
+<h4 id="finite-state-machine">Finite State Machine</h4>
+<ul>
+<li><strong><code>stop_speed</code></strong> (default: <code>0.001</code>): Velocity threshold in rad/s for determining when motion has stopped (approximately 0.057 degrees/s).</li>
+</ul>
+<h2 id="tuning-guidelines">Tuning Guidelines</h2>
+<h3 id="performance-tuning">Performance Tuning</h3>
+<ul>
+<li><strong>Increase <code>rate</code></strong> for smoother control, but monitor CPU usage</li>
+<li><strong>Adjust <code>position_param</code> and <code>orientation_param</code> weights</strong> to balance position vs orientation tracking</li>
+<li><strong>Tune <code>joint_pos_param</code></strong> gains for better joint space control</li>
+</ul>
+<h3 id="safety-tuning">Safety Tuning</h3>
+<ul>
+<li><strong>Reduce <code>limits_param</code></strong> for additional safety margin from joint limits</li>
+<li><strong>Lower <code>max_joint_position_variation</code></strong> for slower, safer motions</li>
+<li><strong>Decrease <code>max_joint_position_track_error</code></strong> for stricter tracking requirements</li>
+</ul>
+<h2 id="safety-considerations">Safety Considerations</h2>
+<ol>
+<li><strong>Joint Limits</strong>: The controllers automatically enforce joint position and velocity limits</li>
+<li><strong>Collision Avoidance</strong>: No built-in collision avoidance - ensure trajectories are safe</li>
+<li><strong>Emergency Stop</strong>: Use the <code>stop</code> command to halt motion immediately</li>
+<li><strong>Reachability</strong>: Use reachability checks before commanding unreachable poses</li>
+<li><strong>Monitoring</strong>: Monitor <code>is_motion_done</code> to ensure commands complete successfully</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<ol>
+<li><strong>Controller not responding</strong>: Check YARP network and port connections</li>
+<li><strong>Motion not starting or wrong motion</strong>: Verify pose is reachable and within joint limits</li>
+<li><strong>Jerky motion</strong>: Increase trajectory duration for smoother movements</li>
+<li><strong>High tracking error</strong>: Tune controller gains in configuration file</li>
+</ol>
+<h3 id="debugging">Debugging</h3>
+<p>Enable verbose output in the configuration:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="na">module_verbose true</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="na">module_logging true</span>
+</code></pre></div></p>
+<p>Check controller status through RPC:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>is_motion_done
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>get_pose
+</code></pre></div></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
