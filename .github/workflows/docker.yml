@@ -7,7 +7,7 @@ on:
 
 
 jobs:
-  build-tour-docker:
+  build-ergocub-cartesian-control:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
