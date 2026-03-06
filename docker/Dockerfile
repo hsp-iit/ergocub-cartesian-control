@@ -24,7 +24,7 @@ ENV LANG=en_US.UTF-8
 
 # Install essentials
 RUN apt update && \
-    apt install --no-install-recommends -y -qq apt-utils build-essential ca-certificates cmake cmake-curses-gui curl git glmark2 gnupg2 htop iputils-ping jq lsb-release mesa-utils nano psmisc python3-virtualenv sudo unzip vim wget zip && \
+    apt install --no-install-recommends -y -qq apt-utils build-essential ca-certificates cmake cmake-curses-gui curl git glmark2 gnupg2 htop iputils-ping jq lsb-release mesa-utils nano psmisc python3-virtualenv sudo unzip vim wget zip pybind11-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install additional dependencies for the robotology superbuild
