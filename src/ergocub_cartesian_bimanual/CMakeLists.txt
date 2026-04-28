@@ -37,9 +37,6 @@ if(BUILD_BIMANUAL_EXECUTABLE)
   find_package(BipedalLocomotionFramework 0.18.0
     COMPONENTS  VectorsCollection
                 ParametersHandlerYarpImplementation REQUIRED)
-
-  # WalkingControllers
-  find_package(WalkingControllers REQUIRED)
 endif()
 
 # Python bindings 
@@ -112,7 +109,6 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                                            utils
                                            BipedalLocomotion::VectorsCollection
                                            BipedalLocomotion::ParametersHandlerYarpImplementation
-                                           WalkingControllers::HumanState
   )
 
   # YARP logging is always enabled via includes; no special defines needed

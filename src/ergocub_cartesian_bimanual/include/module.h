@@ -10,12 +10,10 @@
 #include <yarp/os/BufferedPort.h>
 
 #include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
-#include <WalkingControllers/YarpUtilities/HumanState.h>
 
 #include <memory>
-#include <mutex>
 #include <string.h>
-#include <vector>
+#include <mutex>
 
 #include <ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
@@ -73,8 +71,6 @@ private:
     yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_;
     yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_;
     yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_;
-    yarp::os::BufferedPort<WalkingControllers::YarpUtilities::HumanState> walkingModuleInterface_;
-    std::vector<std::string> walking_joint_names_;
     bool no_control_{false};
 
     /* Forward kinematics */
@@ -139,7 +135,6 @@ private:
     /* HELPER function*/
     void appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app);
     Eigen::VectorXd concatenateEigen(const Eigen::VectorXd &vec1, const Eigen::VectorXd &vec2);
-    bool publishToWalkingController(const Eigen::VectorXd &joint_refs);
 
     /* Thrift service configuration */
     bool configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name);

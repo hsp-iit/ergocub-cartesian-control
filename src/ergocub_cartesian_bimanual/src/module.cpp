@@ -58,8 +58,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
-    const std::string walking_controller_local_port =
-        COMMON_bot.check("walking_controller_local_port", yarp::os::Value("")).asString();
     bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
     no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
     if (no_control_)
@@ -121,33 +119,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", TORSO_bot, "", utils::ParameterType::Float64, true)))
         {
             yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
-            return false;
-        }
-    }
-
-    if (!walking_controller_local_port.empty())
-    {
-        if (right_enabled_)
-        {
-            auto right_joint_names = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
-            walking_joint_names_.insert(walking_joint_names_.end(), right_joint_names.begin(), right_joint_names.end());
-        }
-
-        if (left_enabled_)
-        {
-            auto left_joint_names = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
-            walking_joint_names_.insert(walking_joint_names_.end(), left_joint_names.begin(), left_joint_names.end());
-        }
-
-        if (torso_enabled_)
-        {
-            auto torso_joint_names = utils::loadVectorString(TORSO_bot, "joint_axes_list");
-            walking_joint_names_.insert(walking_joint_names_.end(), torso_joint_names.begin(), torso_joint_names.end());
-        }
-
-        if (!walkingModuleInterface_.open(walking_controller_local_port))
-        {
-            yError() << "[" + module_name_ + "::configure] Error: cannot open the walking controller port.";
             return false;
         }
     }
@@ -494,7 +465,6 @@ bool Module::close()
     rpc_cmd_port_.close();
     bp_cmd_port_.close();
     joints_pos_port_.close();
-    walkingModuleInterface_.close();
 
     return true;
 }
@@ -509,7 +479,6 @@ bool Module::interruptModule()
     rpc_cmd_port_.interrupt();
     bp_cmd_port_.interrupt();
     joints_pos_port_.interrupt();
-    walkingModuleInterface_.interrupt();
 
     return true;
 }
@@ -987,11 +956,6 @@ bool Module::moveChains()
 {
     Eigen::VectorXd joint_refs = compound_chain_.joints.pos;
 
-    if (!walking_joint_names_.empty())
-    {
-        return publishToWalkingController(joint_refs);
-    }
-
     int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
     int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
     int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
@@ -1025,24 +989,6 @@ bool Module::moveChains()
         }
         offset += nT;
     }
-
-    return true;
-}
-
-
-bool Module::publishToWalkingController(const Eigen::VectorXd &joint_refs)
-{
-    if (walking_joint_names_.size() != static_cast<size_t>(joint_refs.size()))
-    {
-        yError() << "[" + module_name_ + "::publishToWalkingController] Error: joint size mismatch.";
-        return false;
-    }
-
-    auto &walking_module_data = walkingModuleInterface_.prepare();
-    walking_module_data.jointNames = walking_joint_names_;
-    walking_module_data.positions.assign(joint_refs.data(), joint_refs.data() + joint_refs.size());
-
-    walkingModuleInterface_.write();
 
     return true;
 }
