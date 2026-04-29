@@ -64,13 +64,13 @@ private:
     const std::string module_name_ = "mc-ergocub-cartesian-bimanual";
 
     /* general.ini */
-    double sample_time_;
-    bool module_logging_;
-    bool module_verbose_;
-    bool use_torso_;
-    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_;
-    yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_;
-    yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_;
+    double sample_time_{};
+    bool module_logging_{};
+    bool module_verbose_{};
+    bool use_torso_{};
+    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_{};
     bool no_control_{false};
 
     /* Forward kinematics */

@@ -487,23 +487,18 @@ bool Module::updateModule()
 {
     checkAndReadRpcCommands();
 
-    {
-        constexpr int max_retries = 5;
-        constexpr auto retry_delay = std::chrono::milliseconds(10);
-        int attempt = 0;
-        bool success = false;
-        while (attempt < max_retries) {
-            if (encodersMeasUpdate()) {
-                success = true;
-                break;
-            }
-            std::this_thread::sleep_for(retry_delay);
-            ++attempt;
-        }
-        if (!success) {
-            yError()<< "[" + module_name_ + "::updateModule] See error(s) above after " << max_retries << " attempts.";
+    static const int MAX_ATTEMPT = 5;
+    static int attempt = 0;
+    if(!encodersMeasUpdate()){
+        attempt++;
+        if (attempt >= MAX_ATTEMPT){
+            yError() << "[" + module_name_ + "::updateModule] Error: cannot read encoders after " << MAX_ATTEMPT << " attempts. See error(s) above.";
             return false;
         }
+    }
+    else
+    {
+        attempt = 0; // reset attempt counter if encoders read successfully
     }
 
     measFksUpdate();
