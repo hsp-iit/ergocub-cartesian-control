@@ -27,6 +27,6 @@ int main(int argc, char** argv)
     rf.configure(argc, argv);
 
     /* Initialize the module. */
-    Module module;
+    Module module(module_name);
     return module.runModule(rf);
 }

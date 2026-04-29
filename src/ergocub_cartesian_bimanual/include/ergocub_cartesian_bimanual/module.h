@@ -12,6 +12,7 @@
 #include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
 
 #include <memory>
+#include <string>
 #include <string.h>
 #include <mutex>
 
@@ -26,6 +27,8 @@ class Module : public yarp::os::RFModule,
                public ergoCubBimanualService
 {
 public:
+    explicit Module(const std::string &module_name);
+
     bool configure(yarp::os::ResourceFinder &rf) override;
 
     bool attach(yarp::os::Port &source) override;
@@ -61,7 +64,7 @@ public:
 
 private:
     /* Module name */
-    const std::string module_name_ = "mc-ergocub-cartesian-bimanual";
+    const std::string module_name_{"no-name"};
 
     /* general.ini */
     double sample_time_{};

@@ -23,6 +23,8 @@
 
 using namespace std::literals::chrono_literals;
 
+Module::Module(const std::string &module_name):module_name_(module_name){}
+
 bool Module::configure(yarp::os::ResourceFinder &rf)
 {
     /* Check for and retrieve mandatory groups. */
