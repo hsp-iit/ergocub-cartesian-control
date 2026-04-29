@@ -2,7 +2,7 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include <BimanualIK.h>
+#include <ergocub_cartesian_bimanual/BimanualIK.h>
 
 namespace py = pybind11;
 

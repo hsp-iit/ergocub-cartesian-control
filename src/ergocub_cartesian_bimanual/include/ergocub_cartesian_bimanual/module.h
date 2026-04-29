@@ -15,12 +15,12 @@
 #include <string.h>
 #include <mutex>
 
-#include <ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
 #include <mc-ergocub-bimanual-service/ergoCubBimanualService.h>
 
-#include <DifferentialInverseKinematicsQP.h>
-#include <Integrator.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/Integrator.h>
 
 class Module : public yarp::os::RFModule,
                public ergoCubBimanualService

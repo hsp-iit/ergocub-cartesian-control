@@ -1,7 +1,7 @@
-#include <BimanualIK.h>
-#include <ForwardKinematicsiDynTree.h>
-#include <DifferentialInverseKinematicsQP.h>
-#include <Integrator.h>
+#include <ergocub_cartesian_bimanual/BimanualIK.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/Integrator.h>
 #include <stdexcept>
 
 using Aff = Eigen::Transform<double,3,Eigen::Affine>;

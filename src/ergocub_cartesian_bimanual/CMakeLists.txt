@@ -49,10 +49,10 @@ endif()
 
 # Core library (IK + FK), reused by both the executable and the Python module
 add_library(ergocub_cartesian_bimanual_core
-  include/DifferentialInverseKinematicsQP.h
-  include/Integrator.h
-  include/ForwardKinematics.h
-  include/ForwardKinematicsiDynTree.h
+  include/ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h
+  include/ergocub_cartesian_bimanual/Integrator.h
+  include/ergocub_cartesian_bimanual/ForwardKinematics.h
+  include/ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h
   src/DifferentialInverseKinematicsQP.cpp
   src/Integrator.cpp
   src/ForwardKinematicsiDynTree.cpp
@@ -87,7 +87,7 @@ endif()
 
 if(BUILD_BIMANUAL_EXECUTABLE)
   add_executable(${EXE_TARGET_NAME}
-    include/module.h
+    include/ergocub_cartesian_bimanual/module.h
     src/module.cpp
     src/module_service.cpp
     src/main.cpp

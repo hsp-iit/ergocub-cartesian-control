@@ -8,7 +8,7 @@
 #ifndef DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP
 #define DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP
 
-#include <DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 
 #include <yarp/os/LogStream.h>
 

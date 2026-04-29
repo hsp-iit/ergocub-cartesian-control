@@ -5,7 +5,7 @@
  * MIT license. See the accompanying LICENSE file for details.
  */
 
-#include <Integrator.h>
+#include <ergocub_cartesian_bimanual/Integrator.h>
 
 #include <yarp/os/LogStream.h>
 

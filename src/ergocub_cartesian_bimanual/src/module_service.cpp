@@ -1,4 +1,4 @@
-#include <module.h>
+#include <ergocub_cartesian_bimanual/module.h>
 
 #include <yarp/os/LogStream.h>
 #include <yarp/eigen/Eigen.h>
