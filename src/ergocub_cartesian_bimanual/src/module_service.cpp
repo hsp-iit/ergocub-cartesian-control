@@ -239,7 +239,6 @@ bool Module::stop()
 
 bool Module::checkAndReadRpcCommands()
 {
-    yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] Checking for RPC commands...";
     yarp::os::Bottle* cmd = rpc_cmd_port_.read(false);
     // print received message
     if (cmd != nullptr)
