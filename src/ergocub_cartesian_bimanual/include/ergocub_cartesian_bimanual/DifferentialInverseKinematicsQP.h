@@ -49,6 +49,8 @@ public:
         const Eigen::VectorXd &cartesian_ori_p_gain,
         const Eigen::VectorXd &cartesian_ori_d_gain,
         const double improve_manip_weight,
+        const double improve_manip_dyn,
+        const double improve_manip_th,
         const Eigen::VectorXd &joint_ref);
 
     ~DifferentialInverseKinematicsQP() = default;
@@ -167,7 +169,7 @@ private:
     const Eigen::VectorXd cartesian_pos_weight_, cartesian_pos_p_gain_, cartesian_pos_d_gain_;
     const Eigen::VectorXd cartesian_ori_weight_, cartesian_ori_p_gain_, cartesian_ori_d_gain_;
     const Eigen::VectorXd joint_ref_;
-    const double improve_manip_weight_;
+    const double improve_manip_weight_, improve_manip_dyn_, improve_manip_th_;
 
     Eigen::Transform<double, 3, Eigen::Affine> right_transform_, left_transform_, right_desired_transform_, left_desired_transform_;
     Eigen::MatrixXd right_jacobian_, left_jacobian_;
@@ -180,6 +182,7 @@ private:
     Eigen::Vector3d right_desired_lin_vel_, right_desired_ang_vel_, right_desired_lin_acc_, right_desired_ang_acc_;
     Eigen::Vector3d left_lin_vel_, left_ang_vel_, left_lin_acc_, left_ang_acc_;
     Eigen::Vector3d left_desired_lin_vel_, left_desired_ang_vel_, left_desired_lin_acc_, left_desired_ang_acc_;
+    Eigen::MatrixXd J_pos_, J_ori_;
 
     std::optional<Eigen::VectorXd> qp_results_;
 
@@ -192,8 +195,5 @@ private:
 
     const std::string class_name_ = "DifferentialInverseKinematicsQP";
 };
-
-/* Matrix manipulation utils*/
-void addBlockOnDiag(Eigen::MatrixXd &M, const Eigen::MatrixXd &M_add);
 
 #endif /* DIFFERENTIAL_INVERSE_KINEMATICS_QP_H */

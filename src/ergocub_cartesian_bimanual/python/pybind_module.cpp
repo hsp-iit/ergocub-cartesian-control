@@ -56,7 +56,8 @@ PYBIND11_MODULE(pysquale, m) {
                   const Eigen::Vector2d&, const Eigen::Vector2d&, const Eigen::Vector2d&,
                   const Eigen::Vector2d&, const Eigen::Vector2d&, const Eigen::Vector2d&,
                   double,
-                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::Vector3d&>(),
+                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::Vector3d&,
+                  double, double>(),
          py::arg("urdf"),
          py::arg("right_joints"),
          py::arg("left_joints"),
@@ -80,7 +81,9 @@ PYBIND11_MODULE(pysquale, m) {
          py::arg("q_home"),
          py::arg("q_lower"),
          py::arg("q_upper"),
-         py::arg("limit_gains_rlT"))
+         py::arg("limit_gains_rlT"),
+         py::arg("improve_manip_dyn"),
+         py::arg("improve_manip_th"))
     .def("reset", &BimanualIK::reset, py::arg("q0"), py::arg("dq0") = Eigen::VectorXd())
   .def("solve_ik", [](BimanualIK& self,
                py::object right_pose, py::object left_pose,

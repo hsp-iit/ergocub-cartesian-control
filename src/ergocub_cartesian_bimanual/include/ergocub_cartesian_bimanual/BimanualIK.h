@@ -41,7 +41,9 @@ public:
              const Eigen::VectorXd& q_home,
              const Eigen::VectorXd& q_lower,
              const Eigen::VectorXd& q_upper,
-             const Eigen::Vector3d& limit_gains_rlT);
+             const Eigen::Vector3d& limit_gains_rlT,
+             double improve_manip_dyn,
+             double improve_manip_th);
 
   ~BimanualIK();
 

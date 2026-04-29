@@ -38,7 +38,9 @@ BimanualIK::BimanualIK(const std::string& urdf,
              const Eigen::VectorXd& q_home,
              const Eigen::VectorXd& q_lower,
              const Eigen::VectorXd& q_upper,
-             const Eigen::Vector3d& limit_gains_rlT)
+             const Eigen::Vector3d& limit_gains_rlT,
+             double improve_manip_dyn,
+             double improve_manip_th)
   : nR_((int)right_joints.size()), nL_((int)left_joints.size()), nT_((int)torso_joints.size()), N_(nR_+nL_+nT_), dt_(sampling_time)
 {
   // Build per-arm joint lists including torso if provided
@@ -52,7 +54,7 @@ BimanualIK::BimanualIK(const std::string& urdf,
     joint_acc_weight, joint_pos_weights, joint_pos_kp, joint_pos_kd,
     cart_pos_weight, cart_pos_kp, cart_pos_kd,
     cart_ori_weight, cart_ori_kp, cart_ori_kd,
-    improve_manip_weight, q_home);
+    improve_manip_weight, improve_manip_dyn, improve_manip_th, q_home);
 
   Eigen::VectorXd gains(3); gains<<limit_gains_rlT(0),limit_gains_rlT(1),limit_gains_rlT(2);
   ik_->set_joint_limits(q_lower, q_upper, gains);
