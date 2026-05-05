@@ -85,7 +85,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (!groupCheckAndRetrieve(rf, "RIGHT_ARM", RIGHT_ARM_bot))
             return false;
 
-        if  (   !(utils::checkParameters({{"improve_manip_dyn", "improve_manip_th", "improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, false))
+        if  (   !(utils::checkParameters({{"improve_manip_dyn", "improve_manip_th", "joint_limits_param", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, false))
             ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::Float64, true))
             ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", RIGHT_ARM_bot, "", utils::ParameterType::String, false)))
         {
@@ -101,7 +101,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (!groupCheckAndRetrieve(rf, "LEFT_ARM", LEFT_ARM_bot))
             return false;
 
-        if  (   !(utils::checkParameters({{"improve_manip_dyn", "improve_manip_th", "improve_manip_weight", "joint_limits_param", "joint_acc_weight", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, false))
+        if  (   !(utils::checkParameters({{"improve_manip_dyn", "improve_manip_th", "joint_limits_param", "cartesian_pos_weight", "cartesian_pos_p_gain", "cartesian_pos_d_gain", "cartesian_ori_weight", "cartesian_ori_p_gain", "cartesian_ori_d_gain", "stop_vel"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, false))
             ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", LEFT_ARM_bot, "", utils::ParameterType::Float64, true))
             ||  !(utils::checkParameters({{"root_frame_name", "ee_frame_name"}}, "", LEFT_ARM_bot, "", utils::ParameterType::String, false)))
         {
@@ -117,7 +117,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (!groupCheckAndRetrieve(rf, "TORSO", TORSO_bot))
             return false;
 
-        if  (   !(utils::checkParameters({{"joint_limits_param", "joint_acc_weight"}}, "", TORSO_bot, "", utils::ParameterType::Float64, false))
+        if  (   !(utils::checkParameters({{"joint_limits_param"}}, "", TORSO_bot, "", utils::ParameterType::Float64, false))
             ||  !(utils::checkParameters({{"joint_pos_weight", "joint_pos_p_gain", "joint_pos_d_gain"}}, "", TORSO_bot, "", utils::ParameterType::Float64, true)))
         {
             yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
@@ -225,7 +225,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     /* Instantiate and initialize QP_inverse kinematics. */
     {
-        Eigen::VectorXd joint_limits_params, joint_acc_weights;
+        Eigen::VectorXd joint_limits_params;
         Eigen::VectorXd joint_pos_weights, joint_pos_p_gain, joint_pos_d_gain;
         Eigen::VectorXd cartesian_pos_weight, cartesian_pos_p_gain, cartesian_pos_d_gain;
         Eigen::VectorXd cartesian_ori_weight, cartesian_ori_p_gain, cartesian_ori_d_gain;
@@ -242,7 +242,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (right_enabled_)
         {
             appendOrInit(joint_limits_params, Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_limits_param").asFloat64()));
-            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(RIGHT_ARM_bot.find("joint_acc_weight").asFloat64()));
 
             appendOrInit(joint_pos_weights, utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_weight"));
             appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(RIGHT_ARM_bot, "joint_pos_p_gain"));
@@ -254,7 +253,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (left_enabled_)
         {
             appendOrInit(joint_limits_params, Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_limits_param").asFloat64()));
-            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(LEFT_ARM_bot.find("joint_acc_weight").asFloat64()));
 
             appendOrInit(joint_pos_weights, utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_weight"));
             appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(LEFT_ARM_bot, "joint_pos_p_gain"));
@@ -266,7 +264,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         if (torso_enabled_)
         {
             appendOrInit(joint_limits_params, Eigen::Vector<double,1>(TORSO_bot.find("joint_limits_param").asFloat64()));
-            appendOrInit(joint_acc_weights,   Eigen::Vector<double,1>(TORSO_bot.find("joint_acc_weight").asFloat64()));
 
             appendOrInit(joint_pos_weights, utils::loadVectorDouble(TORSO_bot, "joint_pos_weight"));
             appendOrInit(joint_pos_p_gain,  utils::loadVectorDouble(TORSO_bot, "joint_pos_p_gain"));
@@ -320,21 +317,16 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendOrInit(cartesian_ori_d_gain, s(0.0));
         }
 
-        // RIGHT AND LEFT ARM: stop_vel & improve_manip_weight
-        std::vector<double> stop_vels, manip_ws, manip_dyns, manip_ths;
+        // RIGHT AND LEFT ARM: stop_vel
+        std::vector<double> stop_vels, manip_dyns, manip_ths;
         if (right_enabled_) { stop_vels.push_back(RIGHT_ARM_bot.find("stop_vel").asFloat64());
-                              manip_ws.push_back(RIGHT_ARM_bot.find("improve_manip_weight").asFloat64());
                               manip_dyns.push_back(RIGHT_ARM_bot.find("improve_manip_dyn").asFloat64());
                               manip_ths.push_back(RIGHT_ARM_bot.find("improve_manip_th").asFloat64()); }
         if (left_enabled_)  { stop_vels.push_back(LEFT_ARM_bot.find("stop_vel").asFloat64());
-                              manip_ws.push_back(LEFT_ARM_bot.find("improve_manip_weight").asFloat64());
                               manip_dyns.push_back(LEFT_ARM_bot.find("improve_manip_dyn").asFloat64());
                               manip_ths.push_back(LEFT_ARM_bot.find("improve_manip_th").asFloat64()); }
 
         compound_chain_.stop_vel = stop_vels.empty() ? 1e-3 : *std::min_element(stop_vels.begin(), stop_vels.end());
-
-        // If manip_ws is empty --> improve_manip_weight = 0.0, otherwise compute the minimum value
-        double improve_manip_weight = manip_ws.empty() ? 0.0 : *std::min_element(manip_ws.begin(), manip_ws.end());
         double improve_manip_dyn = manip_dyns.empty() ? 0.0 : *std::min_element(manip_dyns.begin(), manip_dyns.end());
         double improve_manip_th = manip_ths.empty() ? 0.0 : *std::min_element(manip_ths.begin(), manip_ths.end());
 
@@ -350,7 +342,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
                                                                                 nR,
                                                                                 nL,
                                                                                 nT,
-                                                                                joint_acc_weights,
                                                                                 joint_pos_weights,
                                                                                 joint_pos_p_gain,
                                                                                 joint_pos_d_gain,
@@ -360,7 +351,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
                                                                                 cartesian_ori_weight,
                                                                                 cartesian_ori_p_gain,
                                                                                 cartesian_ori_d_gain,
-                                                                                improve_manip_weight,
                                                                                 improve_manip_dyn,
                                                                                 improve_manip_th,
                                                                                 joint_home);
@@ -502,9 +492,10 @@ bool Module::updateModule()
     if(!encodersMeasUpdate()){
         attempt++;
         if (attempt >= MAX_ATTEMPT){
-            yError() << "[" + module_name_ + "::updateModule] Error: cannot read encoders after " << MAX_ATTEMPT << " attempts. See error(s) above.";
+            yError() << "[" + module_name_ + "::updateModule] Cannot read encoders after " << MAX_ATTEMPT << " attempts. See error(s) above.";
             return false;
         }
+        yWarning() << "[" + module_name_ + "::updateModule] Cannot read encoders. Attempt " << attempt << " of " << MAX_ATTEMPT << ". See error(s) above.";
     }
     else
     {
@@ -520,7 +511,6 @@ bool Module::updateModule()
 
     if(getState()==State::Running)
     {
-        yDebug() << "[" + module_name_ + "::updateModule] DENTRO IF RUNNING.";
         refFksUpdate();
         
         ikUpdate();

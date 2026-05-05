@@ -25,7 +25,6 @@ public:
      * @param sampling_time The sampling time used for the control loop.
      * @param verbose To print some info.
      * @param limits_param The limit constraints gain.
-     * @param joint_acc_weight The weight used in the minimization of the QP functional for the joint velocities term.
      * @param position_param The weight and gain used in the minimization of the QP functional for the position term.
      * @param orientation_param The weight and gain used in the minimization of the QP functional for the orientation term.
      * @param joint_pos_param The weight and gain used in the minimization of the QP functional for the joint positions term.
@@ -38,7 +37,6 @@ public:
         const int right_arm_joints,
         const int left_arm_joints,
         const int torso_joints,
-        const Eigen::VectorXd &joint_acc_weight,
         const Eigen::VectorXd &joint_pos_weights,
         const Eigen::VectorXd &joint_pos_p_gain,
         const Eigen::VectorXd &joint_pos_d_gain,
@@ -48,7 +46,6 @@ public:
         const Eigen::VectorXd &cartesian_ori_weight,
         const Eigen::VectorXd &cartesian_ori_p_gain,
         const Eigen::VectorXd &cartesian_ori_d_gain,
-        const double improve_manip_weight,
         const double improve_manip_dyn,
         const double improve_manip_th,
         const Eigen::VectorXd &joint_ref);
@@ -164,12 +161,11 @@ private:
     const int right_arm_joints_;
     const int left_arm_joints_;
     const int torso_joints_;
-    const Eigen::VectorXd joint_acc_weight_;
     const Eigen::VectorXd joint_pos_weights_, joint_pos_p_gain_, joint_pos_d_gain_;
     const Eigen::VectorXd cartesian_pos_weight_, cartesian_pos_p_gain_, cartesian_pos_d_gain_;
     const Eigen::VectorXd cartesian_ori_weight_, cartesian_ori_p_gain_, cartesian_ori_d_gain_;
     const Eigen::VectorXd joint_ref_;
-    const double improve_manip_weight_, improve_manip_dyn_, improve_manip_th_;
+    const double improve_manip_dyn_, improve_manip_th_;
 
     Eigen::Transform<double, 3, Eigen::Affine> right_transform_, left_transform_, right_desired_transform_, left_desired_transform_;
     Eigen::MatrixXd right_jacobian_, left_jacobian_;
@@ -185,9 +181,6 @@ private:
     Eigen::MatrixXd J_pos_, J_ori_;
 
     std::optional<Eigen::VectorXd> qp_results_;
-
-    double right_max_manip_, right_manip_, right_weight_manip_function_;
-    double left_max_manip_, left_manip_, left_weight_manip_function_;
 
     proxsuite::proxqp::Results<double> old_solution_;
 
