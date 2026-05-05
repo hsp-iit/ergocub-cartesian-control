@@ -240,15 +240,13 @@ bool Module::stop()
 bool Module::checkAndReadRpcCommands()
 {
     yarp::os::Bottle* cmd = rpc_cmd_port_.read(false);
-    // print received message
-    if (cmd != nullptr)
-    {
-        yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] Received command:" << cmd->toString();
-    }
-    else
-    {
-        yInfo() << "[" + module_name_ + "::checkAndReadRpcCommands] No command received.";
-    }
+
+    std::string msg = "[" + module_name_ + "::checkAndReadRpcCommands] ";
+
+    msg += (cmd != nullptr) ? "Received command: " + cmd->toString() : "No command received";
+
+    yInfoThrottle(1.0) << msg;
+
     if (cmd == nullptr)
     {
         return false;
