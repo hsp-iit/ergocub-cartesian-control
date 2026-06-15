@@ -2,7 +2,7 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include <BimanualIK.h>
+#include <ergocub_cartesian_bimanual/BimanualIK.h>
 
 namespace py = pybind11;
 
@@ -52,11 +52,11 @@ PYBIND11_MODULE(pysquale, m) {
                   const std::string&, const std::string&,
                   const std::string&, const std::string&,
                   double,
-                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&,
+                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&,
                   const Eigen::Vector2d&, const Eigen::Vector2d&, const Eigen::Vector2d&,
                   const Eigen::Vector2d&, const Eigen::Vector2d&, const Eigen::Vector2d&,
-                  double,
-                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::Vector3d&>(),
+                  const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::VectorXd&, const Eigen::Vector3d&,
+                  double, double>(),
          py::arg("urdf"),
          py::arg("right_joints"),
          py::arg("left_joints"),
@@ -66,7 +66,6 @@ PYBIND11_MODULE(pysquale, m) {
          py::arg("left_root_frame"),
          py::arg("left_ee_frame"),
          py::arg("sampling_time"),
-         py::arg("joint_acc_weight"),
          py::arg("joint_pos_weights"),
          py::arg("joint_pos_kp"),
          py::arg("joint_pos_kd"),
@@ -76,11 +75,12 @@ PYBIND11_MODULE(pysquale, m) {
          py::arg("cart_ori_weight"),
          py::arg("cart_ori_kp"),
          py::arg("cart_ori_kd"),
-         py::arg("improve_manip_weight"),
          py::arg("q_home"),
          py::arg("q_lower"),
          py::arg("q_upper"),
-         py::arg("limit_gains_rlT"))
+         py::arg("limit_gains_rlT"),
+         py::arg("improve_manip_dyn"),
+         py::arg("improve_manip_th"))
     .def("reset", &BimanualIK::reset, py::arg("q0"), py::arg("dq0") = Eigen::VectorXd())
   .def("solve_ik", [](BimanualIK& self,
                py::object right_pose, py::object left_pose,

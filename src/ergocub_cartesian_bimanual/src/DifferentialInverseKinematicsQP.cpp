@@ -8,7 +8,7 @@
 #ifndef DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP
 #define DIFFERENTIAL_INVERSE_KINEMATICS_QP_CPP
 
-#include <DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 
 #include <yarp/os/LogStream.h>
 
@@ -22,7 +22,6 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     const int right_arm_joints,
     const int left_arm_joints,
     const int torso_joints,
-    const Eigen::VectorXd &joint_acc_weight,
     const Eigen::VectorXd &joint_pos_weights,
     const Eigen::VectorXd &joint_pos_p_gain,
     const Eigen::VectorXd &joint_pos_d_gain,
@@ -32,14 +31,14 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     const Eigen::VectorXd &cartesian_ori_weight,
     const Eigen::VectorXd &cartesian_ori_p_gain,
     const Eigen::VectorXd &cartesian_ori_d_gain,
-    const double improve_manip_weight,
+    const double improve_manip_dyn,
+    const double improve_manip_th,
     const Eigen::VectorXd &joint_ref):
     sampling_time_(sampling_time),
     verbose_(verbose),
     right_arm_joints_(right_arm_joints),
     left_arm_joints_(left_arm_joints),
     torso_joints_(torso_joints),
-    joint_acc_weight_(joint_acc_weight),
     joint_pos_weights_(joint_pos_weights),
     joint_pos_p_gain_(joint_pos_p_gain),
     joint_pos_d_gain_(joint_pos_d_gain),
@@ -49,7 +48,8 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     cartesian_ori_weight_(cartesian_ori_weight),
     cartesian_ori_p_gain_(cartesian_ori_p_gain),
     cartesian_ori_d_gain_(cartesian_ori_d_gain),
-    improve_manip_weight_(improve_manip_weight),
+    improve_manip_dyn_(improve_manip_dyn),
+    improve_manip_th_(improve_manip_th),
     joint_ref_(joint_ref),
     right_bias_acc_(Eigen::VectorXd::Zero(6)),
     left_bias_acc_(Eigen::VectorXd::Zero(6)),
@@ -72,13 +72,7 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     left_desired_lin_vel_(Eigen::Vector3d::Zero()),
     left_desired_ang_vel_(Eigen::Vector3d::Zero()),
     left_desired_lin_acc_(Eigen::Vector3d::Zero()),
-    left_desired_ang_acc_(Eigen::Vector3d::Zero()),
-    right_max_manip_(0.0),
-    right_manip_(0.0),
-    right_weight_manip_function_(0.0),
-    left_max_manip_(0.0),
-    left_manip_(0.0),
-    left_weight_manip_function_(0.0)
+    left_desired_ang_acc_(Eigen::Vector3d::Zero())
 {
     std::string error_message = "[" + class_name_ + "::ctor]. Error: parameter(s) not valid:";
     bool error = false;
@@ -99,13 +93,6 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
         for (int i = 0; i < v.size(); ++i) if (v(i) < 0.0) return true;
         return false;
     };
-
-    // joint_acc_weight: consenti zero (>=0)
-    if (hasNegative(joint_acc_weight))
-    {
-        error = true;
-        error_message += " joint_acc_weight";
-    }
 
     if (hasNonPositive(joint_pos_weights) || (joint_pos_weights.size() != active_joints_num))
     {
@@ -157,12 +144,6 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
         error_message += " cartesian_ori_d_gain";
     }
 
-    if (improve_manip_weight < 0.0)
-    {
-        error = true;
-        error_message += " improve_manip_weight";
-    }
-
     if (joint_ref.size() != active_joints_num)
     {
         error = true;
@@ -182,6 +163,8 @@ DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
     right_jacobian_ = Eigen::MatrixXd::Zero(6, active_joints_num);
     left_jacobian_ = Eigen::MatrixXd::Zero(6, active_joints_num);
     qp_results_ = Eigen::VectorXd::Zero(active_joints_num);
+    J_pos_ = Eigen::MatrixXd::Zero(6, active_joints_num);
+    J_ori_ = Eigen::MatrixXd::Zero(6, active_joints_num);
 
     W_lin_cart_ = Eigen::DiagonalMatrix<double, 6> (cartesian_pos_weight_(0), cartesian_pos_weight_(0), cartesian_pos_weight_(0),
                                                     cartesian_pos_weight_(1), cartesian_pos_weight_(1), cartesian_pos_weight_(1));
@@ -315,24 +298,7 @@ void DifferentialInverseKinematicsQP::set_desired_ee_acceleration(const Eigen::R
 
 std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
 {
-    /* --- Manipulability (robusto a det<=0) --- */
-    double detR = (right_jacobian_ * right_jacobian_.transpose()).determinant();
-    double detL = (left_jacobian_  * left_jacobian_.transpose()).determinant();
-
-    right_manip_ = std::sqrt(std::max(0.0, detR));
-    left_manip_  = std::sqrt(std::max(0.0, detL));
-
-    right_max_manip_ = std::max(right_manip_, right_max_manip_);
-    left_max_manip_  = std::max(left_manip_,  left_max_manip_);
-
-    right_weight_manip_function_ = (right_max_manip_ > 0.0)
-        ? std::pow(1.0 - (right_manip_ / right_max_manip_), 2)
-        : 0.0;
-    left_weight_manip_function_  = (left_max_manip_ > 0.0)
-        ? std::pow(1.0 - (left_manip_ / left_max_manip_), 2)
-        : 0.0;
-
-    /* --- J_pos / J_ori con copia sicura (gestisce catene disattive) --- */
+    /* --- J_pos_ / J_ori_ con copia sicura (gestisce catene disattive) --- */
     auto safeCopy = [](Eigen::MatrixXd& dst, int r0, int c0,
                        const Eigen::MatrixXd& src, int sr0, int sc0,
                        int r, int c) {
@@ -350,18 +316,15 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
     int nt = torso_joints_;
     int N  = nr + nl + nt;
 
-    Eigen::MatrixXd J_pos = Eigen::MatrixXd::Zero(6, N);
-    Eigen::MatrixXd J_ori = Eigen::MatrixXd::Zero(6, N);
-
     // POS
-    safeCopy(J_pos, 0,         0,        right_jacobian_, 0, 0, 3, nr);           // right pos
-    safeCopy(J_pos, 0,         nr+nl,    right_jacobian_, 0, nr, 3, nt);          // torso on right EE
-    safeCopy(J_pos, 3,         nr,       left_jacobian_,  0, 0, 3, nl+nt);        // left pos (+torso)
+    safeCopy(J_pos_, 0,         0,        right_jacobian_, 0, 0, 3, nr);           // right pos
+    safeCopy(J_pos_, 0,         nr+nl,    right_jacobian_, 0, nr, 3, nt);          // torso on right EE
+    safeCopy(J_pos_, 3,         nr,       left_jacobian_,  0, 0, 3, nl+nt);        // left pos (+torso)
 
     // ORI
-    safeCopy(J_ori, 0,         0,        right_jacobian_, 3, 0, 3, nr);           // right ori
-    safeCopy(J_ori, 0,         nr+nl,    right_jacobian_, 3, nr, 3, nt);          // torso on right EE
-    safeCopy(J_ori, 3,         nr,       left_jacobian_,  3, 0, 3, nl+nt);        // left ori (+torso)
+    safeCopy(J_ori_, 0,         0,        right_jacobian_, 3, 0, 3, nr);           // right ori
+    safeCopy(J_ori_, 0,         nr+nl,    right_jacobian_, 3, nr, 3, nt);          // torso on right EE
+    safeCopy(J_ori_, 3,         nr,       left_jacobian_,  3, 0, 3, nl+nt);        // left ori (+torso)
 
     /* --- Errori cartesiani --- */
     Eigen::VectorXd e_p(6);
@@ -398,11 +361,11 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
         Eigen::Matrix<double, 6, 1> ang_des_acc;  ang_des_acc  << right_desired_ang_acc_,         left_desired_ang_acc_;
         Eigen::Matrix<double, 6, 1> ang_ref = -ang_bias_acc + ang_des_acc + ang_Kp_ * e_o + ang_Kd_ * e_w;
 
-        P += J_pos.transpose() * W_lin_cart_ * J_pos;
-        q += -2.0 * J_pos.transpose() * W_lin_cart_ * lin_ref;
+        P += J_pos_.transpose() * W_lin_cart_ * J_pos_;
+        q += -2.0 * J_pos_.transpose() * W_lin_cart_ * lin_ref;
 
-        P += J_ori.transpose() * W_ang_cart_ * J_ori;
-        q += -2.0 * J_ori.transpose() * W_ang_cart_ * ang_ref;
+        P += J_ori_.transpose() * W_ang_cart_ * J_ori_;
+        q += -2.0 * J_ori_.transpose() * W_ang_cart_ * ang_ref;
     }
 
     // Joint posture (PD)
@@ -415,64 +378,6 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
 
         P += joint_pos_weights_.asDiagonal();
         q += -2.0 * joint_pos_weights_.asDiagonal() * ddq_ref;
-    }
-
-    // Penalizza accelerazioni (pesi variabili e lunghezze flessibili)
-    {
-        auto w_at = [&](int i, double def) -> double {
-            return (i < joint_acc_weight_.size()) ? joint_acc_weight_(i) : def;
-        };
-        double wR = w_at(0, 1.0) * right_weight_manip_function_;
-        double wL = w_at(1, 1.0) * left_weight_manip_function_;
-        double wT = w_at(2, 1.0) * std::max(right_weight_manip_function_, left_weight_manip_function_);
-
-        Eigen::MatrixXd W_joint = Eigen::MatrixXd::Identity(N, N);
-        if (nr > 0) W_joint.topLeftCorner(nr, nr) *= wR;
-        if (nl > 0) W_joint.block(nr, nr, nl, nl) *= wL;
-        if (nt > 0) W_joint.bottomRightCorner(nt, nt) *= wT;
-
-        P += W_joint;
-    }
-
-    // Migliora la manipulabilità (saltata automaticamente se EE assente)
-    {
-        Eigen::MatrixXd full_right_jac = Eigen::MatrixXd::Zero(6, N);
-        Eigen::MatrixXd full_left_jac  = Eigen::MatrixXd::Zero(6, N);
-        full_right_jac.topRows(3)    = J_pos.topRows(3);
-        full_right_jac.bottomRows(3) = J_ori.topRows(3);
-        full_left_jac.topRows(3)     = J_pos.bottomRows(3);
-        full_left_jac.bottomRows(3)  = J_ori.bottomRows(3);
-
-        Eigen::VectorXd dmdq_right = Eigen::VectorXd::Zero(N);
-        Eigen::VectorXd dmdq_left  = Eigen::VectorXd::Zero(N);
-
-        if (nr > 0 || nt > 0)
-        {
-            Eigen::Matrix<double,6,6> JJTr = full_right_jac * full_right_jac.transpose();
-            Eigen::LDLT<Eigen::Matrix<double,6,6>> JJTr_decomp(JJTr);
-            double full_right_manip = std::sqrt(std::max(0.0, JJTr.determinant()));
-            for (int i = 0; i < N; ++i)
-                dmdq_right(i) = full_right_manip * (JJTr_decomp.solve(partial_derivative(full_right_jac, i) * full_right_jac.transpose())).trace();
-        }
-        if (nl > 0 || nt > 0)
-        {
-            Eigen::Matrix<double,6,6> JJTl = full_left_jac * full_left_jac.transpose();
-            Eigen::LDLT<Eigen::Matrix<double,6,6>> JJTl_decomp(JJTl);
-            double full_left_manip = std::sqrt(std::max(0.0, JJTl.determinant()));
-            for (int i = 0; i < N; ++i)
-                dmdq_left(i) = full_left_manip * (JJTl_decomp.solve(partial_derivative(full_left_jac, i) * full_left_jac.transpose())).trace();
-        }
-
-        Eigen::VectorXd ddq_ref_r = (dmdq_right - joints_vel_) / sampling_time_;
-        Eigen::VectorXd ddq_ref_l = (dmdq_left  - joints_vel_) / sampling_time_;
-
-        double wM = improve_manip_weight_ * std::max(right_weight_manip_function_, left_weight_manip_function_);
-        if (wM > 0.0)
-        {
-            Eigen::MatrixXd W_m = Eigen::MatrixXd::Identity(N, N) * wM;
-            P += W_m; q += -2.0 * W_m * ddq_ref_r;
-            P += W_m; q += -2.0 * W_m * ddq_ref_l;
-        }
     }
 
     /* --- Add limiter contribution to the constraint --- */
@@ -533,6 +438,9 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
             }
     }
 
+    Eigen::MatrixXd G_l(joints.size() * 2 , joints.size());
+    Eigen::VectorXd h_l(joints.size() * 2 );
+
     /*
     * Implement limits as described in:
     * Kanoun, Oussama. "Real-time prioritized kinematic control under inequality constraints for redundant manipulators." Robotics: Science and Systems. Vol. 7. 2012.
@@ -548,35 +456,74 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
     *                       - ddq^ <= - Kl * ((ql - q)/dt - dq)/dt
     */
 
-    Eigen::MatrixXd G_l(joints.size() * 2, joints.size());
-    Eigen::VectorXd h_l(joints.size() * 2);
+    G_l.block(0, 0, joints.size(), joints.size()) = Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    h_l.block(0, 0, joints.size(), 1) =             gains.asDiagonal() * ((joints_upper_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
 
-    G_l.topRows(joints.size()) = Eigen::MatrixXd::Identity(joints.size(), joints.size());
-    G_l.bottomRows(joints.size()) = -Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    G_l.block(joints.size(), 0, joints.size(), joints.size()) = -Eigen::MatrixXd::Identity(joints.size(), joints.size());
+    h_l.block(joints.size(), 0, joints.size(), 1) =             -1.0 * gains.asDiagonal() * ((joints_lower_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
 
-    h_l.head(joints.size()) =        gains.asDiagonal() * ((joints_upper_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
-    h_l.tail(joints.size()) = -1.0 * gains.asDiagonal() * ((joints_lower_limit - joints)/sampling_time_ - joints_vel_)/sampling_time_;
+    /* Maximize manipulability term
+    *
+    * m = sqrt(det(J J^T))
+    *
+    * We impose a constraint on the time derivative of the manipulability measure:
+    *
+    * dm/dt >= - a_m * (m - m*), a_m > 0
+    *
+    * which is equivalent to a LTI system converging to m*. We are solving for the acceleration, so:
+    *
+    * ddq^ = optimal acceleration.
+    * dq^ = ddq^ * dt + dq;
+    * dm^/dt = dm/dq * dq^ = dm/dq * (ddq^ * dt + dq);
+    *
+    * dm^/dt >= - a_m * (m - m*) -> dm/dq * ddq^ * dt >= - a_m * (m^ - m*) - dm/dq * dq
+    *
+    * Let's rearrange the equation:
+    *
+    * (-dm/dq * dt) * ddq^ <= a_m * (m^ - m*) + dm/dq * dq
+    *
+    * Notice that for a_m = 0 we are just imposing that the manipulability measure cannot decrease, which is not the best choice
+    * as we can accept a reduction of the manipulability measure as long as it is necessary to reach some pose.
+    *
+    */
+
+    auto addManipConstraint = [&](const Eigen::MatrixXd& jacobian) {
+        G_l.conservativeResize(G_l.rows() + 1, G_l.cols());
+        h_l.conservativeResize(h_l.size() + 1);
+
+        Eigen::Matrix<double,6,6> JJT = jacobian * jacobian.transpose();
+        const double manip = std::sqrt(std::max(0.0, JJT.determinant()));
+
+        Eigen::LDLT<Eigen::Matrix<double,6,6>> JJT_ldlt(JJT);
+        Eigen::VectorXd dmdq(joints_.size());
+        for(int i = 0; i < joints_.size(); i++){
+            if(i == 0){dmdq(i) = 0.0;}
+            else{dmdq(i) = manip/2 * (JJT_ldlt.solve( partial_derivative(jacobian,i)*jacobian.transpose() )).trace();}
+        }
+        
+        G_l.bottomRows(1) = -sampling_time_ * dmdq.transpose();
+        h_l(h_l.size() - 1) = dmdq.dot(joints_vel_);
+
+        if(manip >= improve_manip_th_)  h_l(h_l.size() - 1) += improve_manip_dyn_* (manip - improve_manip_th_);
+    };
+
+    if(right_arm_joints_ > 0){
+
+        Eigen::MatrixXd full_right_jac = Eigen::MatrixXd::Zero(6, joints_.size());
+        full_right_jac.topRows(3)    = J_pos_.topRows(3);
+        full_right_jac.bottomRows(3) = J_ori_.topRows(3);
+        addManipConstraint(full_right_jac);
+    }
+
+    if(left_arm_joints_ > 0){
+        Eigen::MatrixXd full_left_jac  = Eigen::MatrixXd::Zero(6, joints_.size());
+        full_left_jac.topRows(3)     = J_pos_.bottomRows(3);
+        full_left_jac.bottomRows(3)  = J_ori_.bottomRows(3);
+
+        addManipConstraint(full_left_jac);
+    }
 
     return std::make_tuple(G_l, h_l);
-}
-
-void addBlockOnDiag(Eigen::MatrixXd &M, const Eigen::MatrixXd &M_add)
-{
-    if (M.cols() == 0)
-    {
-        M = M_add;
-    }
-    else
-    {
-        int M_col = M.cols();
-        int M_row = M.rows();
-
-        M.conservativeResize(M_row + M_add.rows(), M_col + M_add.cols());
-
-        M.topRightCorner(M_row, M_add.cols()).setZero();
-        M.bottomLeftCorner(M_add.rows(), M_col).setZero();
-        M.bottomRightCorner(M_add.rows(), M_add.cols()) = M_add;
-    }
 }
 
 Eigen::MatrixXd DifferentialInverseKinematicsQP::partial_derivative(const Eigen::MatrixXd &J, const unsigned int jointNum)

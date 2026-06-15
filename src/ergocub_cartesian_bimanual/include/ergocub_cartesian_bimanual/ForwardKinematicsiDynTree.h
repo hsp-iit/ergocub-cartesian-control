@@ -13,7 +13,7 @@
 #include <iDynTree/KinDynComputations.h>
 #include <iDynTree/EigenHelpers.h>
 
-#include <ForwardKinematics.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematics.h>
 
 #include <string>
 #include <vector>

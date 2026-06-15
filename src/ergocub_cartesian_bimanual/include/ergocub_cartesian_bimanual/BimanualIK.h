@@ -27,7 +27,6 @@ public:
              const std::string& left_root_frame,
              const std::string& left_ee_frame,
              double sampling_time,
-             const Eigen::VectorXd& joint_acc_weight,
              const Eigen::VectorXd& joint_pos_weights,
              const Eigen::VectorXd& joint_pos_kp,
              const Eigen::VectorXd& joint_pos_kd,
@@ -37,11 +36,12 @@ public:
              const Eigen::Vector2d& cart_ori_weight,   // [right,left]
              const Eigen::Vector2d& cart_ori_kp,       // [right,left]
              const Eigen::Vector2d& cart_ori_kd,       // [right,left]
-             double improve_manip_weight,
              const Eigen::VectorXd& q_home,
              const Eigen::VectorXd& q_lower,
              const Eigen::VectorXd& q_upper,
-             const Eigen::Vector3d& limit_gains_rlT);
+             const Eigen::Vector3d& limit_gains_rlT,
+             double improve_manip_dyn,
+             double improve_manip_th);
 
   ~BimanualIK();
 

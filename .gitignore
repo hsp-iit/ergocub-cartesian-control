@@ -3,3 +3,5 @@ build
 **/*_service/include
 **/*_service/src
 **/*_service/service_index.txt
+.vscode/
+.codex

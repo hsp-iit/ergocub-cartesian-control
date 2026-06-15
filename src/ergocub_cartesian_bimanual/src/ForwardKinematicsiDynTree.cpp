@@ -5,7 +5,7 @@
  * MIT license. See the accompanying LICENSE file for details.
  */
 
-#include <ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 
 #include <iDynTree/ModelLoader.h>
 #include <iDynTree/KinDynComputations.h>

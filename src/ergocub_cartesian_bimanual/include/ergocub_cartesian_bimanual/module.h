@@ -12,20 +12,23 @@
 #include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
 
 #include <memory>
+#include <string>
 #include <string.h>
 #include <mutex>
 
-#include <ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
 #include <mc-ergocub-bimanual-service/ergoCubBimanualService.h>
 
-#include <DifferentialInverseKinematicsQP.h>
-#include <Integrator.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/Integrator.h>
 
 class Module : public yarp::os::RFModule,
                public ergoCubBimanualService
 {
 public:
+    explicit Module(const std::string &module_name);
+
     bool configure(yarp::os::ResourceFinder &rf) override;
 
     bool attach(yarp::os::Port &source) override;
@@ -61,16 +64,16 @@ public:
 
 private:
     /* Module name */
-    const std::string module_name_ = "mc-ergocub-cartesian-bimanual";
+    const std::string module_name_{"no-name"};
 
     /* general.ini */
-    double sample_time_;
-    bool module_logging_;
-    bool module_verbose_;
-    bool use_torso_;
-    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_;
-    yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_;
-    yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_;
+    double sample_time_{};
+    bool module_logging_{};
+    bool module_verbose_{};
+    bool use_torso_{};
+    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_{};
     bool no_control_{false};
 
     /* Forward kinematics */

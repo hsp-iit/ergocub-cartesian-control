@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <module.h>
+#include <ergocub_cartesian_bimanual/module.h>
 
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
@@ -27,6 +27,6 @@ int main(int argc, char** argv)
     rf.configure(argc, argv);
 
     /* Initialize the module. */
-    Module module;
+    Module module(module_name);
     return module.runModule(rf);
 }

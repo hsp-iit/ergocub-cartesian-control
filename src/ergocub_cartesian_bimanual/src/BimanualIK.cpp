@@ -1,7 +1,7 @@
-#include <BimanualIK.h>
-#include <ForwardKinematicsiDynTree.h>
-#include <DifferentialInverseKinematicsQP.h>
-#include <Integrator.h>
+#include <ergocub_cartesian_bimanual/BimanualIK.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
+#include <ergocub_cartesian_bimanual/Integrator.h>
 #include <stdexcept>
 
 using Aff = Eigen::Transform<double,3,Eigen::Affine>;
@@ -11,7 +11,6 @@ static Aff make_aff(const PoseInput& p){ Aff T=Aff::Identity(); T.translate(p.po
 BimanualIK::~BimanualIK() = default;
 
 // ctor notes:
-// - joint_acc_weight: weights for accel regularization per chain [R,L,T] (size<=3)
 // - joint_pos_*: size N (nR+nL+nT)
 // - cart_* arrays: size 2 [right,left], allow zeros for disabled arms
 // - limit_gains_rlT: gains per chain [R,L,T] in [0,1]
@@ -24,7 +23,6 @@ BimanualIK::BimanualIK(const std::string& urdf,
              const std::string& left_root_frame,
              const std::string& left_ee_frame,
              double sampling_time,
-             const Eigen::VectorXd& joint_acc_weight,
              const Eigen::VectorXd& joint_pos_weights,
              const Eigen::VectorXd& joint_pos_kp,
              const Eigen::VectorXd& joint_pos_kd,
@@ -34,11 +32,12 @@ BimanualIK::BimanualIK(const std::string& urdf,
              const Eigen::Vector2d& cart_ori_weight,
              const Eigen::Vector2d& cart_ori_kp,
              const Eigen::Vector2d& cart_ori_kd,
-             double improve_manip_weight,
              const Eigen::VectorXd& q_home,
              const Eigen::VectorXd& q_lower,
              const Eigen::VectorXd& q_upper,
-             const Eigen::Vector3d& limit_gains_rlT)
+             const Eigen::Vector3d& limit_gains_rlT,
+             double improve_manip_dyn,
+             double improve_manip_th)
   : nR_((int)right_joints.size()), nL_((int)left_joints.size()), nT_((int)torso_joints.size()), N_(nR_+nL_+nT_), dt_(sampling_time)
 {
   // Build per-arm joint lists including torso if provided
@@ -49,10 +48,10 @@ BimanualIK::BimanualIK(const std::string& urdf,
   left_fk_ref_  = std::make_unique<ForwardKinematicsiDynTree>(urdf, l_full, left_root_frame, left_ee_frame);
 
   ik_ = std::make_unique<DifferentialInverseKinematicsQP>(dt_, false, nR_, nL_, nT_,
-    joint_acc_weight, joint_pos_weights, joint_pos_kp, joint_pos_kd,
+    joint_pos_weights, joint_pos_kp, joint_pos_kd,
     cart_pos_weight, cart_pos_kp, cart_pos_kd,
     cart_ori_weight, cart_ori_kp, cart_ori_kd,
-    improve_manip_weight, q_home);
+    improve_manip_dyn, improve_manip_th, q_home);
 
   Eigen::VectorXd gains(3); gains<<limit_gains_rlT(0),limit_gains_rlT(1),limit_gains_rlT(2);
   ik_->set_joint_limits(q_lower, q_upper, gains);
