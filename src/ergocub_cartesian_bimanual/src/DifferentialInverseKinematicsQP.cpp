@@ -492,7 +492,7 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
         h_l.conservativeResize(h_l.size() + 1);
 
         Eigen::Matrix<double,6,6> JJT = jacobian * jacobian.transpose();
-        double manip = std::sqrt(JJT.determinant());
+        const double manip = std::sqrt(std::max(0.0, JJT.determinant()));
 
         Eigen::LDLT<Eigen::Matrix<double,6,6>> JJT_ldlt(JJT);
         Eigen::VectorXd dmdq(joints_.size());
