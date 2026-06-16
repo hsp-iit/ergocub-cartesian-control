@@ -485,7 +485,6 @@ bool Module::interruptModule()
 
 bool Module::updateModule()
 {
-    checkAndReadRpcCommands();
 
     static const int MAX_ATTEMPT = 5;
     static int attempt = 0;
@@ -552,6 +551,8 @@ bool Module::updateModule()
             out[i] = compound_chain_.joints.pos[i];
         joints_pos_port_.write();
     }
+
+    checkAndReadRpcCommands();
     
 
     if (module_logging_ || module_verbose_)
@@ -756,21 +757,34 @@ bool Module::checkAndReadNewInputs()
 
     /*
     * The input can contain zero, one or two end effectors, the dimension of the input vector is:
-    * - 7 for each EE for the pose (position + quaternion)
+    * - 12 for each EE for the pose (position + matrix) or 7 for each EE for the pose (position + quaternion)
     * - 6 for each EE for the linear and angular velocity
-    * The accepted formats are: 7*ee, 13*ee, 19*ee.
+    * - 6 for each EE for the linear and angular acceleration
+    * The accepted formats are: 12*ee, 18*ee, 24*ee or 7*ee, 13*ee, 19*ee,
+    * where ee is the number of end effectors (1 or 2) contained in the input vector.
     */
-    auto setPoseRight = [&](const Eigen::VectorXd& r_pose)
+    auto setPoseMat = [&](bool right, const Eigen::VectorXd& pose)
     {
-        right_desired_pose_ = Eigen::Translation3d(r_pose.head(3));
-        Eigen::Vector4d q = r_pose.tail(4);
-        right_desired_pose_.rotate(Eigen::Quaterniond(q));
+        if (right) {
+            right_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            right_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+        }
+        else {
+            left_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            left_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+        }
     };
-    auto setPoseLeft = [&](const Eigen::VectorXd& l_pose)
+
+    auto setPoseQuat = [&](bool right, const Eigen::VectorXd& pose)
     {
-        left_desired_pose_ = Eigen::Translation3d(l_pose.head(3));
-        Eigen::Vector4d q = l_pose.tail(4);
-        left_desired_pose_.rotate(Eigen::Quaterniond(q));
+        if (right) {
+            right_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            right_desired_pose_.rotate(Eigen::Quaterniond(pose[3], pose[4], pose[5], pose[6]));
+        }
+        else {
+            left_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            left_desired_pose_.rotate(Eigen::Quaterniond(pose[3], pose[4], pose[5], pose[6]));
+        }
     };
 
     auto setVel = [&](bool right, const Eigen::VectorXd& v)
@@ -808,18 +822,19 @@ bool Module::checkAndReadNewInputs()
     };
 
     int idx = 0;
-    const int nPose = 7*ee;
+    const int nPose_mat = 12*ee;
+    const int nPose_quat = 7*ee;
     const int nVel  = 6*ee;
     const int nAcc  = 6*ee;
 
-    if (input->size() == nPose || input->size() == nPose + nVel || input->size() == nPose + nVel + nAcc)
+    if (input->size() == nPose_mat || input->size() == nPose_mat + nVel || input->size() == nPose_mat + nVel + nAcc)
     {
         // POSE
-        if (right_enabled_) { setPoseRight(next(7, idx)); }
-        if (left_enabled_)  { setPoseLeft(next(7, idx)); }
+        if (right_enabled_) { setPoseMat(true, next(12, idx)); }
+        if (left_enabled_)  { setPoseMat(false, next(12, idx)); }
 
         // VEL
-        if ((int)input->size() >= nPose + nVel)
+        if ((int)input->size() >= nPose_mat + nVel)
         {
             if (right_enabled_) { setVel(true,  next(6, idx)); }
             if (left_enabled_)  { setVel(false, next(6, idx)); }
@@ -830,7 +845,7 @@ bool Module::checkAndReadNewInputs()
         }
 
         // ACC
-        if ((int)input->size() == nPose + nVel + nAcc)
+        if ((int)input->size() == nPose_mat + nVel + nAcc)
         {
             if (right_enabled_) { setAcc(true,  next(6, idx)); }
             if (left_enabled_)  { setAcc(false, next(6, idx)); }
@@ -840,7 +855,36 @@ bool Module::checkAndReadNewInputs()
             zeroAcc();
         }
 
-        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired trajectory data.";
+        return true;
+    }
+    else if (input->size() == nPose_quat || input->size() == nPose_quat + nVel || input->size() == nPose_quat + nVel + nAcc)
+    {
+        // POSE
+        if (right_enabled_) { setPoseQuat(true, next(7, idx)); }
+        if (left_enabled_)  { setPoseQuat(false, next(7, idx)); }
+
+        // VEL
+        if ((int)input->size() >= nPose_quat + nVel)
+        {
+            if (right_enabled_) { setVel(true,  next(6, idx)); }
+            if (left_enabled_)  { setVel(false, next(6, idx)); }
+        }
+        else
+        {
+            zeroVel();
+        }
+
+        // ACC
+        if ((int)input->size() == nPose_quat + nVel + nAcc)
+        {
+            if (right_enabled_) { setAcc(true,  next(6, idx)); }
+            if (left_enabled_)  { setAcc(false, next(6, idx)); }
+        }
+        else
+        {
+            zeroAcc();
+        }
+
         return true;
     }
     else
