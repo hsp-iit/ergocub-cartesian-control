@@ -8,21 +8,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-bool Module::configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name)
-{
-    if (!rpc_cmd_port_.open(rpc_port_name))
-    {
-        yError()<< "[" + module_name_ + "::configureService] Error: cannot open port" << rpc_port_name;
-        return false;
-    }
-
-    return true;
-}
-
-bool Module::attach(yarp::os::Port &source)
-{
-    return this->yarp().attachAsServer(source);
-}
 
 bool Module::flat_go_to_pose(double x, double y, double z, double m1, double m2, double m3, double m4, double m5, double m6, double m7, double m8, double m9, const std::string& arm)
 {    
@@ -223,8 +208,6 @@ bool Module::go_home()
     {
         left_desired_pose_ = left_chain_.home_pose;
     }
-    // right_desired_pose_ = right_chain_.home_pose;
-    // left_desired_pose_ = left_chain_.home_pose;
 
     setState(State::Running);
     return true;
@@ -237,11 +220,11 @@ bool Module::stop()
     return true;
 }
 
-bool Module::checkAndReadRpcCommands()
+bool Module::checkAndReadQuery()
 {
-    yarp::os::Bottle* cmd = rpc_cmd_port_.read(false);
+    yarp::os::Bottle* cmd = query_port_.read(false);
 
-    std::string msg = "[" + module_name_ + "::checkAndReadRpcCommands] ";
+    std::string msg = "[" + module_name_ + "::" + __func__ + "] ";
 
     msg += (cmd != nullptr) ? "Received command: " + cmd->toString() : "No command received";
 
@@ -279,11 +262,11 @@ bool Module::checkAndReadRpcCommands()
 
         else if (cmd->size() < 14)
         {
-            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] flat_go_to_pose expects 25 elements, got" << cmd->size();
+            yWarning() << "[" + module_name_ + "::" + __func__ + "] flat_go_to_pose expects 25 elements, got" << cmd->size();
             return true;
         }
 
-        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] flat_go_to_pose invalid size"
+        yWarning() << "[" + module_name_ + "::" + __func__ + "] flat_go_to_pose invalid size"
                    << cmd->size() << "(supported: 14 legacy, 25 bimanual left+right)";
         return true;
     }
@@ -313,11 +296,11 @@ bool Module::checkAndReadRpcCommands()
 
         if (cmd->size() < 9)
         {
-            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_pose expects 9 elements, got" << cmd->size();
+            yWarning() << "[" + module_name_ + "::checkAndReadQuery] go_to_pose expects 9 elements, got" << cmd->size();
             return true;
         }
 
-        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_pose invalid size"
+        yWarning() << "[" + module_name_ + "::checkAndReadQuery] go_to_pose invalid size"
                    << cmd->size() << "(supported: 9 legacy, 15 bimanual left+right)";
         return true;
     }
@@ -342,11 +325,11 @@ bool Module::checkAndReadRpcCommands()
 
         if (cmd->size() < 5)
         {
-            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_position expects 5 elements, got" << cmd->size();
+            yWarning() << "[" + module_name_ + "::checkAndReadQuery] go_to_position expects 5 elements, got" << cmd->size();
             return true;
         }
 
-        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] go_to_position invalid size"
+        yWarning() << "[" + module_name_ + "::checkAndReadQuery] go_to_position invalid size"
                    << cmd->size() << "(supported: 5 legacy, 7 bimanual left+right)";
         return true;
     }
@@ -373,11 +356,11 @@ bool Module::checkAndReadRpcCommands()
 
         if (cmd->size() < 6)
         {
-            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_deg expects 6 elements, got" << cmd->size();
+            yWarning() << "[" + module_name_ + "::checkAndReadQuery] rotate_deg expects 6 elements, got" << cmd->size();
             return true;
         }
 
-        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_deg invalid size"
+        yWarning() << "[" + module_name_ + "::checkAndReadQuery] rotate_deg invalid size"
                    << cmd->size() << "(supported: 6 legacy, 11 bimanual left+right)";
         return true;
     }
@@ -404,11 +387,11 @@ bool Module::checkAndReadRpcCommands()
 
         if (cmd->size() < 6)
         {
-            yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_rad expects 6 elements, got" << cmd->size();
+            yWarning() << "[" + module_name_ + "::checkAndReadQuery] rotate_rad expects 6 elements, got" << cmd->size();
             return true;
         }
 
-        yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] rotate_rad invalid size"
+        yWarning() << "[" + module_name_ + "::checkAndReadQuery] rotate_rad invalid size"
                    << cmd->size() << "(supported: 6 legacy, 11 bimanual left+right)";
         return true;
     }
@@ -425,7 +408,7 @@ bool Module::checkAndReadRpcCommands()
         return true;
     }
 
-    yWarning() << "[" + module_name_ + "::checkAndReadRpcCommands] Unknown command:" << op;
+    yWarning() << "[" + module_name_ + "::checkAndReadQuery] Unknown command:" << op;
     return true;
 }
 

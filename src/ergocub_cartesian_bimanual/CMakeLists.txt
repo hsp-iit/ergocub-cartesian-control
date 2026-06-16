@@ -79,8 +79,8 @@ install(TARGETS ergocub_cartesian_bimanual_core
 ## Executable (guarded)
 if(BUILD_BIMANUAL_EXECUTABLE)
   # Ensure required targets from the superproject exist, otherwise skip
-  if(NOT (TARGET cub-joint-control AND TARGET mc-ergocub-bimanual-service AND TARGET utils))
-    message(STATUS "Skipping ${EXE_TARGET_NAME}: required targets not found (cub-joint-control, mc-ergocub-bimanual-service, utils)")
+  if(NOT (TARGET cub-joint-control AND TARGET utils))
+    message(STATUS "Skipping ${EXE_TARGET_NAME}: required targets not found (cub-joint-control, utils)")
     set(BUILD_BIMANUAL_EXECUTABLE OFF)
   endif()
 endif()
@@ -89,7 +89,7 @@ if(BUILD_BIMANUAL_EXECUTABLE)
   add_executable(${EXE_TARGET_NAME}
     include/ergocub_cartesian_bimanual/module.h
     src/module.cpp
-    src/module_service.cpp
+    src/module_query.cpp
     src/main.cpp
   )
 
@@ -105,7 +105,6 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                                            YARP::YARP_sig
                                            YARP::YARP_eigen
                                            cub-joint-control
-                                           mc-ergocub-bimanual-service
                                            utils
                                            BipedalLocomotion::VectorsCollection
                                            BipedalLocomotion::ParametersHandlerYarpImplementation

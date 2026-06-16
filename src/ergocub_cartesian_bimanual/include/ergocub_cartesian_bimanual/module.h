@@ -5,6 +5,7 @@
 
 #include <yarp/os/RFModule.h>
 #include <yarp/sig/Vector.h>
+#include <yarp/sig/Matrix.h>
 #include <yarp/os/Port.h>
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
@@ -18,20 +19,16 @@
 
 #include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
-#include <mc-ergocub-bimanual-service/ergoCubBimanualService.h>
 
 #include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 #include <ergocub_cartesian_bimanual/Integrator.h>
 
-class Module : public yarp::os::RFModule,
-               public ergoCubBimanualService
+class Module : public yarp::os::RFModule
 {
 public:
     explicit Module(const std::string &module_name);
 
     bool configure(yarp::os::ResourceFinder &rf) override;
-
-    bool attach(yarp::os::Port &source) override;
 
     bool close() override;
 
@@ -41,7 +38,7 @@ public:
 
     bool updateModule() override;
 
-    /* CartesianService interface */
+    /* Query interface */
     bool go_to_pose(double x, double y, double z, double q_x, double q_y, double q_z, double q_w, const std::string& arm);
 
     bool flat_go_to_pose(double x, double y, double z, double m1, double m2, double m3, double m4, double m5, double m6, double m7, double m8, double m9, const std::string& arm);
@@ -71,8 +68,8 @@ private:
     bool module_logging_{};
     bool module_verbose_{};
     bool use_torso_{};
-    yarp::os::BufferedPort<yarp::os::Bottle> rpc_cmd_port_{};
-    yarp::os::BufferedPort<yarp::sig::Vector> bp_cmd_port_{};
+    yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{};
     yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_{};
     bool no_control_{false};
 
@@ -122,7 +119,7 @@ private:
     bool isMotionDone();
 
     /* Control input*/
-    bool checkAndReadRpcCommands();
+    bool checkAndReadQuery();
     bool checkAndReadNewInputs();
     Eigen::Affine3d right_desired_pose_, left_desired_pose_;
     Eigen::Vector3d right_desired_lin_vel_, right_desired_ang_vel_, right_desired_lin_acc_, right_desired_ang_acc_;

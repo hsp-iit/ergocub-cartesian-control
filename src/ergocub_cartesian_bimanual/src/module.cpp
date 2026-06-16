@@ -49,7 +49,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     if  (   !(utils::checkParameters({{"rate"}}, "", COMMON_bot, "", utils::ParameterType::Float64, false))
         ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
-        ||  !(utils::checkParameters({{"rpc_local_port_name", "ctrl_local_port_name"}}, "", COMMON_bot, "", utils::ParameterType::String, false)))
+        ||  !(utils::checkParameters({{"query_port_name", "input_port_name"}}, "", COMMON_bot, "", utils::ParameterType::String, false)))
     {
         yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for COMMON group missing or invalid.";
         return false;
@@ -59,8 +59,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     module_logging_ = COMMON_bot.find("module_logging").asBool();
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
-    const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
-    bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
+    query_port_.open(COMMON_bot.find("query_port_name").asString());
+    input_cmd_.open(COMMON_bot.find("input_port_name").asString());
     no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
     if (no_control_)
     {
@@ -123,13 +123,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
             return false;
         }
-    }
-
-    /* Configure RPC service. */
-    if (!configureService(rf, rpc_local_port_name))
-    {
-        yError() << "[" + module_name_ + "::configure] Error: cannot configure the RPC service.";
-        return false;
     }
 
     /* Instantiate and initialize CHAINS and SUBCHAINS. */
@@ -462,8 +455,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
 bool Module::close()
 {
-    rpc_cmd_port_.close();
-    bp_cmd_port_.close();
+    query_port_.close();
+    input_cmd_.close();
     joints_pos_port_.close();
 
     return true;
@@ -476,8 +469,8 @@ double Module::getPeriod()
 
 bool Module::interruptModule()
 {
-    rpc_cmd_port_.interrupt();
-    bp_cmd_port_.interrupt();
+    query_port_.interrupt();
+    input_cmd_.interrupt();
     joints_pos_port_.interrupt();
 
     return true;
@@ -552,7 +545,7 @@ bool Module::updateModule()
         joints_pos_port_.write();
     }
 
-    checkAndReadRpcCommands();
+    checkAndReadQuery();
     
 
     if (module_logging_ || module_verbose_)
@@ -807,7 +800,7 @@ bool Module::checkAndReadNewInputs()
         left_desired_lin_acc_.setZero();  left_desired_ang_acc_.setZero();
     };
 
-    yarp::sig::Vector* input = bp_cmd_port_.read(false);
+    yarp::sig::Vector* input = input_cmd_.read(false);
     if (input == nullptr )
         return false;
 
@@ -1221,6 +1214,7 @@ void Module::appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app)
     vec.resize(temp.size() + vec_app.size());
     if (temp.size() > 0) vec << temp, vec_app; else vec << vec_app;
 };
+
 
 Eigen::VectorXd Module::concatenateEigen(const Eigen::VectorXd &vec1, const Eigen::VectorXd &vec2)
 {
