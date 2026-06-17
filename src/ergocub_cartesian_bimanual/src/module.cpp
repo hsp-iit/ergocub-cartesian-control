@@ -9,8 +9,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <BipedalLocomotion/ParametersHandler/YarpImplementation.h>
-
 #include <utils/utils.h>
 #include <utils/utils.hpp>
 
@@ -49,7 +47,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     if  (   !(utils::checkParameters({{"rate"}}, "", COMMON_bot, "", utils::ParameterType::Float64, false))
         ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
-        ||  !(utils::checkParameters({{"rpc_local_port_name", "ctrl_local_port_name"}}, "", COMMON_bot, "", utils::ParameterType::String, false)))
+        ||  !(utils::checkParameters({{"query_port_name", "input_port_name"}}, "", COMMON_bot, "", utils::ParameterType::String, false)))
     {
         yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for COMMON group missing or invalid.";
         return false;
@@ -59,8 +57,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     module_logging_ = COMMON_bot.find("module_logging").asBool();
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
-    const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
-    bp_cmd_port_.open(COMMON_bot.find("ctrl_local_port_name").asString());
+    query_port_.open("/" + module_name_ + COMMON_bot.find("query_port_name").asString());
+    input_cmd_.open("/" + module_name_ + COMMON_bot.find("input_port_name").asString());
     no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
     if (no_control_)
     {
@@ -123,13 +121,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for TORSO group missing or invalid.";
             return false;
         }
-    }
-
-    /* Configure RPC service. */
-    if (!configureService(rf, rpc_local_port_name))
-    {
-        yError() << "[" + module_name_ + "::configure] Error: cannot configure the RPC service.";
-        return false;
     }
 
     /* Instantiate and initialize CHAINS and SUBCHAINS. */
@@ -462,8 +453,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
 bool Module::close()
 {
-    rpc_cmd_port_.close();
-    bp_cmd_port_.close();
+    query_port_.close();
+    input_cmd_.close();
     joints_pos_port_.close();
 
     return true;
@@ -476,8 +467,8 @@ double Module::getPeriod()
 
 bool Module::interruptModule()
 {
-    rpc_cmd_port_.interrupt();
-    bp_cmd_port_.interrupt();
+    query_port_.interrupt();
+    input_cmd_.interrupt();
     joints_pos_port_.interrupt();
 
     return true;
@@ -485,7 +476,6 @@ bool Module::interruptModule()
 
 bool Module::updateModule()
 {
-    checkAndReadRpcCommands();
 
     static const int MAX_ATTEMPT = 5;
     static int attempt = 0;
@@ -552,6 +542,8 @@ bool Module::updateModule()
             out[i] = compound_chain_.joints.pos[i];
         joints_pos_port_.write();
     }
+
+    checkAndReadQuery();
     
 
     if (module_logging_ || module_verbose_)
@@ -756,21 +748,34 @@ bool Module::checkAndReadNewInputs()
 
     /*
     * The input can contain zero, one or two end effectors, the dimension of the input vector is:
-    * - 7 for each EE for the pose (position + quaternion)
+    * - 12 for each EE for the pose (position + matrix) or 7 for each EE for the pose (position + quaternion)
     * - 6 for each EE for the linear and angular velocity
-    * The accepted formats are: 7*ee, 13*ee, 19*ee.
+    * - 6 for each EE for the linear and angular acceleration
+    * The accepted formats are: 12*ee, 18*ee, 24*ee or 7*ee, 13*ee, 19*ee,
+    * where ee is the number of end effectors (1 or 2) contained in the input vector.
     */
-    auto setPoseRight = [&](const Eigen::VectorXd& r_pose)
+    auto setPoseMat = [&](bool right, const Eigen::VectorXd& pose)
     {
-        right_desired_pose_ = Eigen::Translation3d(r_pose.head(3));
-        Eigen::Vector4d q = r_pose.tail(4);
-        right_desired_pose_.rotate(Eigen::Quaterniond(q));
+        if (right) {
+            right_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            right_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+        }
+        else {
+            left_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            left_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+        }
     };
-    auto setPoseLeft = [&](const Eigen::VectorXd& l_pose)
+
+    auto setPoseQuat = [&](bool right, const Eigen::VectorXd& pose)
     {
-        left_desired_pose_ = Eigen::Translation3d(l_pose.head(3));
-        Eigen::Vector4d q = l_pose.tail(4);
-        left_desired_pose_.rotate(Eigen::Quaterniond(q));
+        if (right) {
+            right_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            right_desired_pose_.rotate(Eigen::Quaterniond(pose[3], pose[4], pose[5], pose[6]));
+        }
+        else {
+            left_desired_pose_ = Eigen::Translation3d(pose.head(3));
+            left_desired_pose_.rotate(Eigen::Quaterniond(pose[3], pose[4], pose[5], pose[6]));
+        }
     };
 
     auto setVel = [&](bool right, const Eigen::VectorXd& v)
@@ -793,7 +798,7 @@ bool Module::checkAndReadNewInputs()
         left_desired_lin_acc_.setZero();  left_desired_ang_acc_.setZero();
     };
 
-    yarp::sig::Vector* input = bp_cmd_port_.read(false);
+    yarp::sig::Vector* input = input_cmd_.read(false);
     if (input == nullptr )
         return false;
 
@@ -808,18 +813,19 @@ bool Module::checkAndReadNewInputs()
     };
 
     int idx = 0;
-    const int nPose = 7*ee;
+    const int nPose_mat = 12*ee;
+    const int nPose_quat = 7*ee;
     const int nVel  = 6*ee;
     const int nAcc  = 6*ee;
 
-    if (input->size() == nPose || input->size() == nPose + nVel || input->size() == nPose + nVel + nAcc)
+    if (input->size() == nPose_mat || input->size() == nPose_mat + nVel || input->size() == nPose_mat + nVel + nAcc)
     {
         // POSE
-        if (right_enabled_) { setPoseRight(next(7, idx)); }
-        if (left_enabled_)  { setPoseLeft(next(7, idx)); }
+        if (right_enabled_) { setPoseMat(true, next(12, idx)); }
+        if (left_enabled_)  { setPoseMat(false, next(12, idx)); }
 
         // VEL
-        if ((int)input->size() >= nPose + nVel)
+        if ((int)input->size() >= nPose_mat + nVel)
         {
             if (right_enabled_) { setVel(true,  next(6, idx)); }
             if (left_enabled_)  { setVel(false, next(6, idx)); }
@@ -830,7 +836,7 @@ bool Module::checkAndReadNewInputs()
         }
 
         // ACC
-        if ((int)input->size() == nPose + nVel + nAcc)
+        if ((int)input->size() == nPose_mat + nVel + nAcc)
         {
             if (right_enabled_) { setAcc(true,  next(6, idx)); }
             if (left_enabled_)  { setAcc(false, next(6, idx)); }
@@ -840,7 +846,36 @@ bool Module::checkAndReadNewInputs()
             zeroAcc();
         }
 
-        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received new desired trajectory data.";
+        return true;
+    }
+    else if (input->size() == nPose_quat || input->size() == nPose_quat + nVel || input->size() == nPose_quat + nVel + nAcc)
+    {
+        // POSE
+        if (right_enabled_) { setPoseQuat(true, next(7, idx)); }
+        if (left_enabled_)  { setPoseQuat(false, next(7, idx)); }
+
+        // VEL
+        if ((int)input->size() >= nPose_quat + nVel)
+        {
+            if (right_enabled_) { setVel(true,  next(6, idx)); }
+            if (left_enabled_)  { setVel(false, next(6, idx)); }
+        }
+        else
+        {
+            zeroVel();
+        }
+
+        // ACC
+        if ((int)input->size() == nPose_quat + nVel + nAcc)
+        {
+            if (right_enabled_) { setAcc(true,  next(6, idx)); }
+            if (left_enabled_)  { setAcc(false, next(6, idx)); }
+        }
+        else
+        {
+            zeroAcc();
+        }
+
         return true;
     }
     else
@@ -848,7 +883,7 @@ bool Module::checkAndReadNewInputs()
         // The received format is not correct: remain in the actual pose and set the velocities and the accelerations to zero
         zeroVel();
         zeroAcc();
-        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received wrong inputs. Keeping last desired poses.";
+        yInfo()<< "[" + module_name_ + "::" + __func__ + "] Received wrong inputs. Keeping last desired poses.";
         return true;
     }
 }
@@ -905,7 +940,6 @@ void Module::ikUpdate()
         lT, lVl, lVa, lAl, lAa, lJ, lB
     );
 }
-
 
 
 void Module::setDesiredTrajectory()
@@ -1177,6 +1211,7 @@ void Module::appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app)
     vec.resize(temp.size() + vec_app.size());
     if (temp.size() > 0) vec << temp, vec_app; else vec << vec_app;
 };
+
 
 Eigen::VectorXd Module::concatenateEigen(const Eigen::VectorXd &vec1, const Eigen::VectorXd &vec2)
 {
