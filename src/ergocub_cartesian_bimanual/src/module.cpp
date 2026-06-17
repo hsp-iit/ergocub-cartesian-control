@@ -9,8 +9,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <BipedalLocomotion/ParametersHandler/YarpImplementation.h>
-
 #include <utils/utils.h>
 #include <utils/utils.hpp>
 
@@ -59,8 +57,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     module_logging_ = COMMON_bot.find("module_logging").asBool();
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
-    query_port_.open(COMMON_bot.find("query_port_name").asString());
-    input_cmd_.open(COMMON_bot.find("input_port_name").asString());
+    query_port_.open("/" + module_name_ + COMMON_bot.find("query_port_name").asString());
+    input_cmd_.open("/" + module_name_ + COMMON_bot.find("input_port_name").asString());
     no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
     if (no_control_)
     {
@@ -885,7 +883,7 @@ bool Module::checkAndReadNewInputs()
         // The received format is not correct: remain in the actual pose and set the velocities and the accelerations to zero
         zeroVel();
         zeroAcc();
-        yInfo()<< "[" + module_name_ + "::checkAndReadNewInputs] Received wrong inputs. Keeping last desired poses.";
+        yInfo()<< "[" + module_name_ + "::" + __func__ + "] Received wrong inputs. Keeping last desired poses.";
         return true;
     }
 }
@@ -942,7 +940,6 @@ void Module::ikUpdate()
         lT, lVl, lVa, lAl, lAa, lJ, lB
     );
 }
-
 
 
 void Module::setDesiredTrajectory()

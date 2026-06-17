@@ -10,8 +10,6 @@
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
 
-#include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
-
 #include <memory>
 #include <string>
 #include <string.h>
@@ -39,17 +37,11 @@ public:
     bool updateModule() override;
 
     /* Query interface */
-    bool go_to_pose(double x, double y, double z, double q_x, double q_y, double q_z, double q_w, const std::string& arm);
-
-    bool flat_go_to_pose(double x, double y, double z, double m1, double m2, double m3, double m4, double m5, double m6, double m7, double m8, double m9, const std::string& arm);
-
     bool go_to_position(double x, double y, double z, const std::string& arm);
 
     bool rotate_deg(double angle, double x, double y, double z, const std::string& arm);
 
     bool rotate_rad(double angle, double x, double y, double z, const std::string& arm);
-
-    yarp::sig::Matrix get_pose(const std::string& arm);
 
     bool go_home();
 
@@ -69,8 +61,7 @@ private:
     bool module_verbose_{};
     bool use_torso_{};
     yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
-    yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{};
-    yarp::os::BufferedPort<yarp::sig::Vector> joints_pos_port_{};
+    yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
     bool no_control_{false};
 
     /* Forward kinematics */
@@ -125,19 +116,15 @@ private:
     Eigen::Vector3d right_desired_lin_vel_, right_desired_ang_vel_, right_desired_lin_acc_, right_desired_ang_acc_;
     Eigen::Vector3d left_desired_lin_vel_, left_desired_ang_vel_, left_desired_lin_acc_, left_desired_ang_acc_;
 
-    /* Protects sections that depend on parameters read/changed via RPC calls */
+    /* Protects state */
     std::mutex mutex_;
 
     /* Logging */
     void verboseAndLog();
-    BipedalLocomotion::YarpUtilities::VectorsCollectionServer m_vectorsCollectionServer; /** Logger server. */
 
     /* HELPER function*/
     void appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app);
     Eigen::VectorXd concatenateEigen(const Eigen::VectorXd &vec1, const Eigen::VectorXd &vec2);
-
-    /* Thrift service configuration */
-    bool configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name);
 };
 
 #endif /* MODULE_H */
