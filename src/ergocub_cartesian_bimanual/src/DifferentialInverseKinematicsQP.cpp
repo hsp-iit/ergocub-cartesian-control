@@ -487,20 +487,33 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
     *
     */
 
-    auto addManipConstraint = [&](const Eigen::MatrixXd& jacobian) {
+    auto addManipConstraint = [&](const Eigen::MatrixXd& jacobian, bool use_pos, bool use_ori) {
+        if (!use_pos && !use_ori) return;   // nothing controlled -> no manipulability constraint
+
+        // Keep only the actively-controlled task rows (pos = 0-2, ori = 3-5).
+        auto pick = [&](const Eigen::MatrixXd& J) -> Eigen::MatrixXd {
+            if (use_pos && use_ori) return J;
+            if (use_pos)            return J.topRows(3);
+            return J.bottomRows(3);
+        };
+
+        Eigen::MatrixXd Jred = pick(jacobian);
+        Eigen::MatrixXd JJT  = Jred * Jred.transpose();
+        const double manip   = std::sqrt(std::max(0.0, JJT.determinant()));
+
         G_l.conservativeResize(G_l.rows() + 1, G_l.cols());
         h_l.conservativeResize(h_l.size() + 1);
 
-        Eigen::Matrix<double,6,6> JJT = jacobian * jacobian.transpose();
-        const double manip = std::sqrt(std::max(0.0, JJT.determinant()));
-
-        Eigen::LDLT<Eigen::Matrix<double,6,6>> JJT_ldlt(JJT);
+        Eigen::LDLT<Eigen::MatrixXd> JJT_ldlt(JJT);
         Eigen::VectorXd dmdq(joints_.size());
         for(int i = 0; i < joints_.size(); i++){
             if(i == 0){dmdq(i) = 0.0;}
-            else{dmdq(i) = manip/2 * (JJT_ldlt.solve( partial_derivative(jacobian,i)*jacobian.transpose() )).trace();}
+            else{
+                Eigen::MatrixXd dJred = pick(partial_derivative(jacobian, i));
+                dmdq(i) = manip/2 * (JJT_ldlt.solve( dJred * Jred.transpose() )).trace();
+            }
         }
-        
+
         G_l.bottomRows(1) = -sampling_time_ * dmdq.transpose();
         h_l(h_l.size() - 1) = dmdq.dot(joints_vel_);
 
@@ -512,7 +525,7 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
         Eigen::MatrixXd full_right_jac = Eigen::MatrixXd::Zero(6, joints_.size());
         full_right_jac.topRows(3)    = J_pos_.topRows(3);
         full_right_jac.bottomRows(3) = J_ori_.topRows(3);
-        addManipConstraint(full_right_jac);
+        addManipConstraint(full_right_jac, cartesian_pos_weight_(0) > 0.0, cartesian_ori_weight_(0) > 0.0);
     }
 
     if(left_arm_joints_ > 0){
@@ -520,7 +533,7 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd> DifferentialInverseKinematicsQP::li
         full_left_jac.topRows(3)     = J_pos_.bottomRows(3);
         full_left_jac.bottomRows(3)  = J_ori_.bottomRows(3);
 
-        addManipConstraint(full_left_jac);
+        addManipConstraint(full_left_jac, cartesian_pos_weight_(1) > 0.0, cartesian_ori_weight_(1) > 0.0);
     }
 
     return std::make_tuple(G_l, h_l);
