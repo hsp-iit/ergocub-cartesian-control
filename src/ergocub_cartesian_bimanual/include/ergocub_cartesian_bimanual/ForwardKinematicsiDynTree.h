@@ -63,10 +63,14 @@ class ForwardKinematicsiDynTree : public ForwardKinematics
 
         Eigen::VectorXd get_ee_bias_acc() override;
 
+        std::vector<std::string> get_joints_list() override;
+
     private:
         const std::string log_prefix_ = "ForwardKinematicsiDynTree";
 
         iDynTree::KinDynComputations chain_;
+
+        std::vector<std::string> joints_list_;
 
         iDynTree::FrameIndex root_frame_idx_;
 

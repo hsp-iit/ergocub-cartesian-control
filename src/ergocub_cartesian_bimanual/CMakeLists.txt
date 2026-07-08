@@ -32,6 +32,30 @@ find_package(iDynTree REQUIRED)
 # ProxSuite
 find_package(proxsuite REQUIRED)
 
+if(RERUN_LOGGING)
+  find_package(rerun_sdk REQUIRED CONFIG)
+
+  function(add_rerun_sdk_rpath target_name)
+    set(_rerun_sdk_location "")
+    get_target_property(_rerun_sdk_imported_configs rerun_sdk IMPORTED_CONFIGURATIONS)
+    foreach(_config IN LISTS _rerun_sdk_imported_configs)
+      if(NOT _rerun_sdk_location)
+        get_target_property(_rerun_sdk_location rerun_sdk IMPORTED_LOCATION_${_config})
+      endif()
+    endforeach()
+
+    if(NOT _rerun_sdk_location)
+      get_target_property(_rerun_sdk_location rerun_sdk IMPORTED_LOCATION)
+    endif()
+
+    if(_rerun_sdk_location)
+      get_filename_component(_rerun_sdk_library_dir "${_rerun_sdk_location}" DIRECTORY)
+      set_property(TARGET ${target_name} APPEND PROPERTY BUILD_RPATH "${_rerun_sdk_library_dir}")
+      set_property(TARGET ${target_name} APPEND PROPERTY INSTALL_RPATH "${_rerun_sdk_library_dir}")
+    endif()
+  endfunction()
+endif()
+
 # Python bindings 
 option(BUILD_PYTHON "Build Python bindings for bimanual IK" ON)
 if(BUILD_PYTHON)
@@ -62,6 +86,12 @@ target_link_libraries(ergocub_cartesian_bimanual_core PUBLIC
   ${iDynTree_LIBRARIES}
   proxsuite::proxsuite
 )
+
+if(RERUN_LOGGING)
+  target_compile_definitions(ergocub_cartesian_bimanual_core PUBLIC LOGGING_RERUN)
+  target_link_libraries(ergocub_cartesian_bimanual_core PUBLIC rerun_sdk)
+  add_rerun_sdk_rpath(ergocub_cartesian_bimanual_core)
+endif()
 
 # Install the core library - REQUIRED for the executable to work!
 install(TARGETS ergocub_cartesian_bimanual_core
@@ -100,6 +130,13 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                                            cub-joint-control
                                            utils
   )
+
+  if(RERUN_LOGGING)
+    target_compile_definitions(${EXE_TARGET_NAME} PRIVATE LOGGING_RERUN)
+    target_link_libraries(${EXE_TARGET_NAME} PRIVATE rerun_sdk)
+    add_rerun_sdk_rpath(${EXE_TARGET_NAME})
+  endif()
+
 
   # YARP logging is always enabled via includes; no special defines needed
 

@@ -10,6 +10,9 @@
 
 #include <Eigen/Dense>
 
+#include <string>
+#include <vector>
+
 /**
  * Abstract class representing the forward kinematics of a kinematic chain.
  */
@@ -75,6 +78,12 @@ public:
     * @warning This method should be called only after the kinematics has been updated via ForwardKinematics::update().
     */
     virtual Eigen::VectorXd get_ee_bias_acc() = 0;
+
+   /**
+    * Get the ordered list of joint names used by the kinematic chain.
+    * @return A vector containing the joint names in the same order as the joint state vectors.
+    */
+    virtual std::vector<std::string> get_joints_list() = 0;
 };
 
 

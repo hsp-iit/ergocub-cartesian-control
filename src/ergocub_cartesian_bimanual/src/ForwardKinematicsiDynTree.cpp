@@ -23,6 +23,8 @@ ForwardKinematicsiDynTree::ForwardKinematicsiDynTree(const std::string& urdf_pat
         throw(std::runtime_error(log_prefix_ + "::ctor. Cannot load model from " + urdf_path));
     }
 
+    joints_list_ = joints_list;
+
     /* Instantiate the chain. */
     chain_.loadRobotModel(loader.model());
 
@@ -139,4 +141,9 @@ Eigen::Vector3d ForwardKinematicsiDynTree::get_ee_ang_acc()
 Eigen::VectorXd ForwardKinematicsiDynTree::get_ee_bias_acc()
 {
     return bias_acc_;
+}
+
+std::vector<std::string> ForwardKinematicsiDynTree::get_joints_list()
+{
+    return joints_list_;
 }

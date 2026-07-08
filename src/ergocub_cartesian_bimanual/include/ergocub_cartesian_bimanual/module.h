@@ -14,12 +14,17 @@
 #include <string>
 #include <string.h>
 #include <mutex>
+#include <cstdint>
 
 #include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
 
 #include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 #include <ergocub_cartesian_bimanual/Integrator.h>
+
+#ifdef LOGGING_RERUN
+#include <rerun.hpp>
+#endif
 
 class Module : public yarp::os::RFModule
 {
@@ -57,8 +62,6 @@ private:
 
     /* general.ini */
     double sample_time_{};
-    bool module_logging_{};
-    bool module_verbose_{};
     bool use_torso_{};
     yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
     yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
@@ -120,7 +123,11 @@ private:
     std::mutex mutex_;
 
     /* Logging */
-    void verboseAndLog();
+    #ifdef LOGGING_RERUN
+    void log();
+    std::unique_ptr<rerun::RecordingStream> logger_{nullptr};
+    std::string timeLine_{"frame"};
+    #endif
 
     /* HELPER function*/
     void appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app);

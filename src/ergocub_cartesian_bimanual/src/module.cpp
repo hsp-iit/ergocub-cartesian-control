@@ -14,8 +14,10 @@
 
 #include <optional>
 
+#include <array>
 #include <chrono>
 #include <thread>
+#include <vector>
 
 #include <unsupported/Eigen/MatrixFunctions>
 
@@ -46,7 +48,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         return false;
 
     if  (   !(utils::checkParameters({{"rate"}}, "", COMMON_bot, "", utils::ParameterType::Float64, false))
-        ||  !(utils::checkParameters({{"module_logging", "module_verbose", "qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
+        ||  !(utils::checkParameters({{"qp_verbose"}}, "", COMMON_bot, "", utils::ParameterType::Bool, false))
         ||  !(utils::checkParameters({{"query_port_name", "input_port_name"}}, "", COMMON_bot, "", utils::ParameterType::String, false)))
     {
         yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for COMMON group missing or invalid.";
@@ -54,8 +56,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     }
 
     sample_time_ = 1.0 / COMMON_bot.find("rate").asFloat64();
-    module_logging_ = COMMON_bot.find("module_logging").asBool();
-    module_verbose_ = COMMON_bot.find("module_verbose").asBool();
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     query_port_.open("/" + module_name_ + COMMON_bot.find("query_port_name").asString());
     input_cmd_.open("/" + module_name_ + COMMON_bot.find("input_port_name").asString());
@@ -444,9 +444,43 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     left_desired_lin_acc_ = Eigen::Vector3d::Zero();
     left_desired_ang_acc_ = Eigen::Vector3d::Zero();
 
+    #ifdef LOGGING_RERUN
+    logger_ = std::make_unique<rerun::RecordingStream>(module_name_);
+    logger_->spawn().handle();
+
+    auto jointSeriesNames = [] (const std::vector<std::string>& jointNames)
+    {
+        std::vector<rerun::components::Name> names;
+        names.reserve(2 * jointNames.size());
+
+        for (const auto& jointName : jointNames)
+            names.emplace_back("ref/" + jointName);
+        for (const auto& jointName : jointNames)
+            names.emplace_back("meas/" + jointName);
+
+        return names;
+    };
+
+    auto logJointSeriesNames = [&] (const CHAINS& chain, const std::string& log_string)
+    {
+        if (!chain.refFk)
+            return;
+
+        const auto jointNames = chain.refFk->get_joints_list();
+        logger_->log_static(
+            "/" + module_name_ + "/" + log_string + "/joints",
+            rerun::SeriesLines().with_names(jointSeriesNames(jointNames))
+        );
+    };
+
+    logger_->set_time_duration_secs(timeLine_, yarp::os::Time::now());
+    if(right_enabled_)  logJointSeriesNames(right_chain_, "right");
+    if(left_enabled_)   logJointSeriesNames(left_chain_, "left");
+    #endif
+
     setState(State::Stop);
 
-    yInfo() << "[" + module_name_ + "::configure] Done.";
+    yInfo() << "[" + module_name_ + "::" + __func__ + "] Done.";
 
     return true;
 }
@@ -482,10 +516,10 @@ bool Module::updateModule()
     if(!encodersMeasUpdate()){
         attempt++;
         if (attempt >= MAX_ATTEMPT){
-            yError() << "[" + module_name_ + "::updateModule] Cannot read encoders after " << MAX_ATTEMPT << " attempts. See error(s) above.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Cannot read encoders after " << MAX_ATTEMPT << " attempts. See error(s) above.";
             return false;
         }
-        yWarning() << "[" + module_name_ + "::updateModule] Cannot read encoders. Attempt " << attempt << " of " << MAX_ATTEMPT << ". See error(s) above.";
+        yWarning() << "[" + module_name_ + "::" + __func__ + "] Cannot read encoders. Attempt " << attempt << " of " << MAX_ATTEMPT << ". See error(s) above.";
     }
     else
     {
@@ -508,20 +542,20 @@ bool Module::updateModule()
 
         if(!solveIkAndUpdateIntegrators())
         {
-            yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+            yError()<< "[" + module_name_ + "::" + __func__ + "] See error(s) above.";
             return false;
         }
         
         if (!encodersRefUpdate())
         {
-            yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+            yError()<< "[" + module_name_ + "::" + __func__ + "] See error(s) above.";
             return false;
         }
         if (!no_control_)
         {
             if(!moveChains())
             {
-                yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+                yError()<< "[" + module_name_ + "::" + __func__ + "] See error(s) above.";
                 return false;
             }
         }
@@ -544,10 +578,10 @@ bool Module::updateModule()
     }
 
     checkAndReadQuery();
-    
 
-    if (module_logging_ || module_verbose_)
-        verboseAndLog();
+    #ifdef LOGGING_RERUN
+    log();
+    #endif
 
     return true;
 }
@@ -564,17 +598,17 @@ bool Module::encodersMeasUpdate()
 
         if (!right_arm_.joint_pos.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint positions.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve RIGHT_ARM joint positions.";
             return false;
         }
         if (!right_arm_.joint_vel.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint velocities.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve RIGHT_ARM joint velocities.";
             return false;
         }
         if (!right_arm_.joint_acc.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve RIGHT_ARM joint accelerations.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve RIGHT_ARM joint accelerations.";
             return false;
         }
     }
@@ -587,17 +621,17 @@ bool Module::encodersMeasUpdate()
 
         if (!left_arm_.joint_pos.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint positions.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve LEFT_ARM joint positions.";
             return false;
         }
         if (!left_arm_.joint_vel.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint velocities.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve LEFT_ARM joint velocities.";
             return false;
         }
         if (!left_arm_.joint_acc.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve LEFT_ARM joint accelerations.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve LEFT_ARM joint accelerations.";
             return false;
         }
     }
@@ -610,17 +644,17 @@ bool Module::encodersMeasUpdate()
 
         if (!torso_.joint_pos.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint positions.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve TORSO joint positions.";
             return false;
         }
         if (!torso_.joint_vel.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint velocities.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve TORSO joint velocities.";
             return false;
         }
         if (!torso_.joint_acc.has_value())
         {
-            yError() << "[" + module_name_ + "::encodersMeasUpdate] Error: CubJointControl cannot retrieve TORSO joint accelerations.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: CubJointControl cannot retrieve TORSO joint accelerations.";
             return false;
         }
     }
@@ -969,7 +1003,7 @@ bool Module::solveIkAndUpdateIntegrators()
 
     if (!qp_result_.has_value())
     {
-        yError()<< "[" + module_name_ + "::solveIkAndUpdateIntegrators] Error: No value for the ik solution!";
+        yError()<< "[" + module_name_ + "::" + __func__ + "] Error: No value for the ik solution!";
         return false;
     }
 
@@ -995,7 +1029,7 @@ bool Module::moveChains()
     {
         if(!right_arm_.cjc.moveToStreaming(joint_refs.segment(offset, nR)))
         {
-            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move RIGHT_ARM. See the errors above.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: Cannot move RIGHT_ARM. See the errors above.";
             return false;
         }
         offset += nR;
@@ -1004,7 +1038,7 @@ bool Module::moveChains()
     {
         if(!left_arm_.cjc.moveToStreaming(joint_refs.segment(offset, nL)))
         {
-            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move LEFT_ARM. See the errors above.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: Cannot move LEFT_ARM. See the errors above.";
             return false;
         }
         offset += nL;
@@ -1013,7 +1047,7 @@ bool Module::moveChains()
     {
         if(!torso_.cjc.moveToStreaming(joint_refs.segment(offset, nT)))
         {
-            yError() << "[" + module_name_ + "::moveChains] Error: Cannot move TORSO. See the errors above.";
+            yError() << "[" + module_name_ + "::" + __func__ + "] Error: Cannot move TORSO. See the errors above.";
             return false;
         }
         offset += nT;
@@ -1053,157 +1087,65 @@ Module::State Module::getState()
     return state_;
 }
 
-
-void Module::verboseAndLog()
+#ifdef LOGGING_RERUN
+void Module::log()
 {
-    struct verboseAndLogValues
+    if (!logger_)
+        return;
+
+    auto logTransform3D = [&] (const std::string& entity, const Eigen::Vector3d& position, const Eigen::Matrix3d& rotation)
     {
-        Eigen::VectorXd jnt_pos, jnt_vel, jnt_acc;
-        Eigen::Matrix3d cart_rot;
-        Eigen::AngleAxisd cart_rot_aa;
-        Eigen::Quaterniond cart_rot_quat;
-        Eigen::AngleAxisd cart_rot_aa_err;
-        Eigen::Vector3d cart_pos, cart_pos_err;
-        Eigen::VectorXd ee_bias_acc;
-        double manip, manip_func;
-    };
-
-    struct verboseAndLogStruct
-    {
-        verboseAndLogValues des, qp, meas;
-    } right, left;
-
-
-    static double right_max_manip = 0.0, left_max_manip = 0.0;
-
-    auto fillVerboseAndLogStruct = [] (verboseAndLogStruct& vals, double& max_manip, const Eigen::Affine3d& des_pose, const Module::CHAINS& chain)
-    {
-        //Desired values
-        vals.des.cart_pos = des_pose.translation();
-        vals.des.cart_rot = des_pose.rotation();
-        vals.des.cart_rot_aa = Eigen::AngleAxisd(vals.des.cart_rot);
-        vals.des.cart_rot_quat = Eigen::Quaterniond(vals.des.cart_rot_aa);
-
-        //Reference values
-        vals.qp.jnt_pos = chain.refJoints.pos;
-        vals.qp.jnt_vel = chain.refJoints.vel;
-        vals.qp.jnt_acc = chain.refJoints.acc;
-        vals.qp.cart_pos = chain.refFk->get_ee_transform().translation();
-        vals.qp.cart_rot = chain.refFk->get_ee_transform().rotation();
-        vals.qp.cart_rot_aa = Eigen::AngleAxisd(vals.qp.cart_rot);
-        vals.qp.cart_rot_quat = Eigen::Quaterniond(vals.qp.cart_rot_aa);
-        vals.qp.ee_bias_acc = chain.refFk->get_ee_bias_acc();
-
-        vals.qp.cart_pos_err = vals.des.cart_pos - vals.qp.cart_pos;
-        vals.qp.cart_rot_aa_err = Eigen::AngleAxisd(vals.des.cart_rot * vals.qp.cart_rot.transpose());
-
-        auto qp_jacobian = chain.refFk->get_jacobian();
-        vals.qp.manip = sqrt((qp_jacobian * qp_jacobian.transpose()).determinant());
-        max_manip = std::max(vals.qp.manip,max_manip);
-        vals.qp.manip_func =  pow(1 - (vals.qp.manip / max_manip), 2);
-
-        //Measured values
-        vals.meas.jnt_pos = chain.measJoints.pos;
-        vals.meas.jnt_vel = chain.measJoints.vel;
-        vals.meas.jnt_acc = chain.measJoints.acc;
-        vals.meas.cart_pos = chain.measFk->get_ee_transform().translation();
-        vals.meas.cart_rot = chain.measFk->get_ee_transform().rotation();
-        vals.meas.cart_rot_aa = Eigen::AngleAxisd(vals.meas.cart_rot);
-        vals.meas.cart_rot_quat = Eigen::Quaterniond(vals.meas.cart_rot_aa);
-        vals.meas.ee_bias_acc = chain.measFk->get_ee_bias_acc();
-
-        vals.meas.cart_pos_err = vals.qp.cart_pos - vals.meas.cart_pos;
-        vals.meas.cart_rot_aa_err = Eigen::AngleAxisd(vals.qp.cart_rot * vals.meas.cart_rot.transpose());
-    };
-
-    /* RIGHT*/
-    if (right_enabled_ && right_chain_.refFk && right_chain_.measFk)
-        fillVerboseAndLogStruct(right, right_max_manip, right_desired_pose_, right_chain_);
-
-    /* LEFT*/
-    if (left_enabled_ && left_chain_.refFk && left_chain_.measFk)
-        fillVerboseAndLogStruct(left, left_max_manip, left_desired_pose_, left_chain_);
-
-    if (module_verbose_)
-    {
-        auto printVerboseAndLogStruct = [] (const verboseAndLogStruct& vals, const double max_manip)
-        {
-            /* From Eigen to string. */
-            auto eigenToString = [] (const Eigen::MatrixXd& eigen_in)
-            {
-                std::ostringstream ss;
-
-                ss <<"[";
-                int i;
-                for (i = 0; i < eigen_in.size() - 1; i++)
-                {
-                    ss<<eigen_in(i)<<", ";
-                }
-                ss<<eigen_in(i)<<"]";
-
-                return ss.str();
-            };
-
-            //desired values
-            yInfo() << "---------- Desired input --------------------------";
-            yInfo() << "pos des" << eigenToString(vals.des.cart_pos);
-            yInfo() << "ori des" << eigenToString(vals.des.cart_rot_aa.axis() * vals.des.cart_rot_aa.angle());
-            yInfo() << "ori qua: "<<vals.des.cart_rot_quat.x()<<" "<<vals.des.cart_rot_quat.y()<<" "<<vals.des.cart_rot_quat.z()<<" "<<vals.des.cart_rot_quat.w();
-
-            //QP generated values
-            yInfo() << "---------- QP generated values, errors w.r.t. input ----------";
-            yInfo() << "pos gen" << eigenToString(vals.qp.cart_pos);
-            yInfo() << "ori gen" << eigenToString(vals.qp.cart_rot_aa.axis() * vals.qp.cart_rot_aa.angle());
-            yInfo() <<" ori qua: "<<vals.qp.cart_rot_quat.x()<<" "<<vals.qp.cart_rot_quat.y()<<" "<<vals.qp.cart_rot_quat.z()<<" "<<vals.qp.cart_rot_quat.w();
-            yInfo() << "pos err (m) |norm| [components]" << vals.qp.cart_pos_err.norm() << "\t" << eigenToString(vals.qp.cart_pos_err);
-            yInfo() << "ang err (deg) |norm| [components]" << vals.qp.cart_rot_aa_err.angle() * (180 / M_PI) << "\t" << eigenToString(vals.qp.cart_rot_aa_err.angle() * vals.qp.cart_rot_aa_err.axis());
-            yInfo() << "joints qp acc" << eigenToString(vals.qp.jnt_acc);
-            yInfo() << "joints qp vel" << eigenToString(vals.qp.jnt_vel);
-            yInfo() << "joints qp pos" << eigenToString(vals.qp.jnt_pos);
-            yInfo() << "manip "<<vals.qp.manip<<" max_manip "<<max_manip<<" manip/max_manip "<<(max_manip>0?vals.qp.manip/max_manip:0.0)<<" weight_manip_function "<<vals.qp.manip_func;
-
-            //measured values
-            yInfo() << "---------- Current values, errors w.r.t. QP generated -----------";
-            yInfo() << "pos cur" << eigenToString(vals.meas.cart_pos);
-            yInfo() << "ori cur" << eigenToString(vals.meas.cart_rot_aa.axis() * vals.meas.cart_rot_aa.angle())<<"\tquat: "<<eigenToString(vals.meas.cart_rot_quat.coeffs());
-            yInfo() << "pos err (m) |norm| [components]" << vals.meas.cart_pos_err.norm() << "\t" << eigenToString(vals.meas.cart_pos_err);
-            yInfo() << "ang err (deg) |norm| [components]" << vals.meas.cart_rot_aa_err.angle() * (180 / M_PI) << "\t" << eigenToString(vals.meas.cart_rot_aa_err.angle() * vals.meas.cart_rot_aa_err.axis());
-            yInfo() << "joints meas acc" << eigenToString(vals.meas.jnt_acc);
-            yInfo() << "joints meas vel" << eigenToString(vals.meas.jnt_vel);
-            yInfo() << "joints meas pos" << eigenToString(vals.meas.jnt_pos);
-            yInfo() << "################################################################";
+        const std::array<float, 9> rotationColumns{
+            static_cast<float>(rotation(0, 0)),
+            static_cast<float>(rotation(1, 0)),
+            static_cast<float>(rotation(2, 0)),
+            static_cast<float>(rotation(0, 1)),
+            static_cast<float>(rotation(1, 1)),
+            static_cast<float>(rotation(2, 1)),
+            static_cast<float>(rotation(0, 2)),
+            static_cast<float>(rotation(1, 2)),
+            static_cast<float>(rotation(2, 2)),
         };
 
-        yInfo() << "[" + module_name_ + "::verboseAndLog] Verbose ******************************";
+        logger_->log(entity,
+            rerun::Transform3D(
+                rerun::components::Translation3D(position.x(), position.y(), position.z()),
+                rerun::components::TransformMat3x3(rerun::datatypes::Mat3x3(rotationColumns))
+            ), rerun::archetypes::TransformAxes3D(0.1f)
+        );
+    };
 
-
-        yInfo() << "---------- STATE -----------";
-        auto state = getState();
-        if (state == State::Stop)
-            {yInfo() << "state\t|Stop|";}
-        else if (state == State::Running)
-            yInfo() << "state\t|Running|";
-
-        if (right_enabled_ && right_chain_.refFk && right_chain_.measFk)
-        {
-            yInfo() << "---------- RIGHT CHAIN -----------";
-            printVerboseAndLogStruct(right, right_max_manip);
-        }
-
-        if (left_enabled_ && left_chain_.refFk && left_chain_.measFk)
-        {
-            yInfo() << "---------- LEFT CHAIN -----------";
-            printVerboseAndLogStruct(left, left_max_manip);
-        }
-    }
-
-    if(module_logging_)
+    auto jointValues = [] (const Eigen::VectorXd& refJoints, const Eigen::VectorXd& measJoints)
     {
-        yInfo() << "[" + module_name_ + "::verboseAndLog] Logging.";
-    }
+        std::vector<double> values;
+        values.reserve(static_cast<std::size_t>(refJoints.size() + measJoints.size()));
+        values.insert(values.end(), refJoints.data(), refJoints.data() + refJoints.size());
+        values.insert(values.end(), measJoints.data(), measJoints.data() + measJoints.size());
+        return values;
+    };
+
+    logger_->set_time_duration_secs(timeLine_, yarp::os::Time::now());
+
+    auto logChain = [&] (const CHAINS& chain, const std::string& log_string){
+        if (!chain.refFk || !chain.measFk)
+            return;
+
+        logTransform3D("/" + module_name_ + "/" + log_string + "/ref/pose", chain.refFk->get_ee_transform().translation(), chain.refFk->get_ee_transform().rotation());
+        logTransform3D("/" + module_name_ + "/" + log_string + "/meas/pose", chain.measFk->get_ee_transform().translation(), chain.measFk->get_ee_transform().rotation());
+
+        logger_->log(
+            "/" + module_name_ + "/" + log_string + "/joints",
+            rerun::Scalars(jointValues(chain.refJoints.pos, chain.measJoints.pos))
+        );
+    };
+
+    logger_->set_time_duration_secs(timeLine_, yarp::os::Time::now());
+
+    if(right_enabled_)  logChain(right_chain_, "right");
+    if(left_enabled_)   logChain(left_chain_, "left");
 
 }
-
+#endif
 
 void Module::appendEigen(Eigen::VectorXd &vec, const Eigen::VectorXd &vec_app)
 {
