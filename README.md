@@ -1,7 +1,7 @@
 ergocub-cartesian-control
 =====================
 
-This repository contains the code for single arm controllers for the ergoCub and R1 (model R1SN003, the CRIS one) robot.
+This repository contains the code for single-arm and dual-arm controllers for the ergoCub and R1 (model R1SN003, the CRIS one) robot.
 
 Documentation
 -------------
@@ -21,7 +21,7 @@ docker build -t hsp/ergocub-cartesian-control:latest .
 
 #### Dependencies
 
-- `robotology-superbuild` latest build
+- `robotology-superbuild` latest build, enabling the options: `ROBOTOLOGY_ENABLE_DYNAMICS`, `ROBOTOLOGY_ENABLE_DYNAMICS_FULL_DEPS`. See [here](https://github.com/robotology/robotology-superbuild/blob/master/doc/cmake-options.md#dependencies-cmake-options) for further details.
 - You can also install them with the provided conda environment `environment.yml`
 
 #### Instructions

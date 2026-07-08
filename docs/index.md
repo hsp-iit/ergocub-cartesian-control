@@ -16,7 +16,7 @@ We recommend installing the libraries directly on the robot because the control 
 
 #### Dependencies
 
-- `robotology-superbuild` latest build
+- `robotology-superbuild` latest build, enabling the options: `ROBOTOLOGY_ENABLE_DYNAMICS`, `ROBOTOLOGY_ENABLE_DYNAMICS_FULL_DEPS`. See [here](https://github.com/robotology/robotology-superbuild/blob/master/doc/cmake-options.md#dependencies-cmake-options) for further details.
 - You can also install them with the provided conda environment `environment.yml`
 
 #### Instructions
