@@ -6,8 +6,6 @@
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Searchable.h>
 
-#include <BipedalLocomotion/ParametersHandler/YarpImplementation.h>
-
 #include <utils/utils.h>
 #include <utils/utils.hpp>
 
@@ -333,47 +331,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     if (module_logging_)
     {
-        /* Open ports for logging */
-        const std::string arm_name = ARM_bot.find("name").asString();
-
-        auto loggerOption = std::make_shared<BipedalLocomotion::ParametersHandler::YarpImplementation>(rf);
-        loggerOption->setParameter("remote", "/" + module_name_ + "/" + arm_name + "/logger");
-
-        if (!m_vectorsCollectionServer.initialize(loggerOption))
-        {
-            yError() << "Module " + module_name_ + ". Error: cannot initialize m_vectorsCollectionServer.";
-            return false;
-        }
-
-        m_vectorsCollectionServer.populateMetadata("cartesian_state", {"state"});
-
-        m_vectorsCollectionServer.populateMetadata("trajGen::pos::ini", {"x", "y", "z"});
-        m_vectorsCollectionServer.populateMetadata("trajGen::pos::fin", {"x", "y", "z"});
-        m_vectorsCollectionServer.populateMetadata("trajGen::pos::des", {"x", "y", "z"});
-
-        m_vectorsCollectionServer.populateMetadata("trajGen::ori::ini", {"Y", "P", "R"});
-        m_vectorsCollectionServer.populateMetadata("trajGen::ori::fin", {"Y", "P", "R"});
-        m_vectorsCollectionServer.populateMetadata("trajGen::ori::des", {"Y", "P", "R"});
-
-        m_vectorsCollectionServer.populateMetadata("qpIK::joints::pos", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("qpIK::joints::vel", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("qpIK::joints::acc", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("qpIK::cartes::pos", {"x", "y", "z"});
-        m_vectorsCollectionServer.populateMetadata("qpIK::cartes::ori", {"Y", "P", "R"});
-        m_vectorsCollectionServer.populateMetadata("qpIK::manips", {"manip", "max_manip", "manip_weight"});
-
-        m_vectorsCollectionServer.populateMetadata("measured::joints::pos", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("measured::joints::vel", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("measured::joints::acc", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-        m_vectorsCollectionServer.populateMetadata("measured::cartes::pos", {"x", "y", "z"});
-        m_vectorsCollectionServer.populateMetadata("measured::cartes::ori", {"Y", "P", "R"});
-        m_vectorsCollectionServer.populateMetadata("measured::manips", {"manip", "max_manip", "manip_weight"});
-
-        m_vectorsCollectionServer.populateMetadata("reference::joints::pos", {"torso_roll", "torso_pitch", "torso_yaw", "shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_yaw", "wrist_roll", "wrist_pitch"});
-
-
-        m_vectorsCollectionServer.finalizeMetadata();
-
+        yDebug() << module_name_ + "::configure(): To be implemented.";
     }
 
     yInfo() << module_name_ + "::configure(): Configuration done.";
@@ -881,62 +839,7 @@ void Module::log()
 
     if(module_logging_)
     {
-
-        Eigen::VectorXd vec3(3);
-
-        m_vectorsCollectionServer.prepareData();
-        m_vectorsCollectionServer.clearData();
-
-        m_vectorsCollectionServer.populateData("cartesian_state", std::array<double, 1>{static_cast<double>(getState())});
-
-        auto eigenToStdVecDouble = [] (const Eigen::VectorXd& eigen_vec)
-        {
-            std::vector<double> vec(eigen_vec.size());
-
-            for (int i = 0; i < eigen_vec.size(); i++)
-            {
-                vec[i] = eigen_vec[i];
-            }
-
-            return vec;
-        };
-
-        m_vectorsCollectionServer.populateData("trajGen::pos::ini", eigenToStdVecDouble(traj_ini_pos));
-        m_vectorsCollectionServer.populateData("trajGen::pos::fin", eigenToStdVecDouble(traj_fin_pos));
-        m_vectorsCollectionServer.populateData("trajGen::pos::des", eigenToStdVecDouble(traj_des_pos));
-
-        //eulerAngles(2, 1, 0) -> Rz(yaw) * Ry(pitch) * Rx(roll) (https://github.com/robotology/idyntree/issues/721#issue-674991575)
-        m_vectorsCollectionServer.populateData("trajGen::ori::ini", eigenToStdVecDouble(traj_ini_rot.eulerAngles(2, 1, 0)));
-        m_vectorsCollectionServer.populateData("trajGen::ori::fin", eigenToStdVecDouble(traj_fin_rot.eulerAngles(2, 1, 0)));
-        m_vectorsCollectionServer.populateData("trajGen::ori::des", eigenToStdVecDouble(traj_des_rot.eulerAngles(2, 1, 0)));
-
-
-        m_vectorsCollectionServer.populateData("qpIK::joints::pos", eigenToStdVecDouble(qp_joints_pos));
-        m_vectorsCollectionServer.populateData("qpIK::joints::vel", eigenToStdVecDouble(qp_joints_vel));
-        m_vectorsCollectionServer.populateData("qpIK::joints::acc", eigenToStdVecDouble(qp_joints_acc));
-        m_vectorsCollectionServer.populateData("qpIK::cartes::pos", eigenToStdVecDouble(qp_pos));
-
-        m_vectorsCollectionServer.populateData("qpIK::cartes::ori", eigenToStdVecDouble(qp_rot.eulerAngles(2, 1, 0)));
-
-        vec3[0]=qp_manip;
-        vec3[1]=qp_max_manip;
-        vec3[2]=qp_weight_manip_function;
-        m_vectorsCollectionServer.populateData("qpIK::manips", eigenToStdVecDouble(vec3));
-
-
-        m_vectorsCollectionServer.populateData("measured::joints::pos", eigenToStdVecDouble(meas_enc_pos));
-        m_vectorsCollectionServer.populateData("measured::joints::vel", eigenToStdVecDouble(meas_enc_vel));
-        m_vectorsCollectionServer.populateData("measured::joints::acc", eigenToStdVecDouble(meas_enc_acc));
-        m_vectorsCollectionServer.populateData("measured::cartes::pos", eigenToStdVecDouble(meas_pos));
-
-        m_vectorsCollectionServer.populateData("measured::cartes::ori", eigenToStdVecDouble( meas_rot.eulerAngles(2, 1, 0)));
-        vec3[0]=meas_manip;
-        vec3[1]=meas_max_manip;
-        vec3[2]=meas_weight_manip_function;
-        m_vectorsCollectionServer.populateData("measured::manips", eigenToStdVecDouble(vec3));
-
-        m_vectorsCollectionServer.sendData();
-
+        // to be implemented
     }
 
 }

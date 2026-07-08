@@ -10,8 +10,6 @@
 #include <yarp/sig/Vector.h>
 #include <yarp/os/Port.h>
 
-#include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
-
 #include <ForwardKinematicsiDynTree.h>
 #include <DifferentialInverseKinematicsQP.h>
 #include <Integrator.h>
@@ -156,7 +154,6 @@ private:
 
     /* Logging */
     void log();
-    BipedalLocomotion::YarpUtilities::VectorsCollectionServer m_vectorsCollectionServer; /** Logger server. */
 
     /* Thrift service configuration */
     bool configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name);
