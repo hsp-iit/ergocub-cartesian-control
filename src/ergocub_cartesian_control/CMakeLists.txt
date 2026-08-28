@@ -24,9 +24,9 @@ find_package(iDynTree REQUIRED)
 find_package(proxsuite REQUIRED)
 
 # BipedalLocomotionFramework (for logging)
-find_package(BipedalLocomotionFramework 0.18.0
-  COMPONENTS  VectorsCollection
-              ParametersHandlerYarpImplementation REQUIRED)
+#find_package(BipedalLocomotionFramework 0.18.0
+#  COMPONENTS  VectorsCollection
+#              ParametersHandlerYarpImplementation REQUIRED)
 
 # Executable
 add_executable(${EXE_TARGET_NAME}
@@ -60,8 +60,8 @@ target_link_libraries(${EXE_TARGET_NAME} PRIVATE
                                          gb-ergocub-cartesian-service
                                          cub-joint-control
                                          utils
-                                         BipedalLocomotion::VectorsCollection
-                                         BipedalLocomotion::ParametersHandlerYarpImplementation
+ #                                        BipedalLocomotion::VectorsCollection
+ #                                        BipedalLocomotion::ParametersHandlerYarpImplementation
                                          trajectory-generator
 )
 

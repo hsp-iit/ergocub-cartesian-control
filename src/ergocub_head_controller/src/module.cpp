@@ -45,15 +45,38 @@ bool Module::configure(yarp::os::ResourceFinder& rf)
     }
     print_ = rf.findGroup("COMMON").find("print").asBool();
 
+    /* Signs converting actuated joint coordinates between the model and the hardware. */
+    Eigen::VectorXd joint_signs = Eigen::VectorXd::Ones(list_actuated_joints_.size());
+    if (rf.check("joint_signs"))
+    {
+        if (!rf.find("joint_signs").isList()
+            || rf.find("joint_signs").asList()->size() != list_actuated_joints_.size())
+        {
+            yError() << module_name_ + "::configure. Error: optional parameter 'joint_signs' must contain one sign for each actuated joint.";
+            return false;
+        }
+
+        const auto* signs_list = rf.find("joint_signs").asList();
+        for (std::size_t i = 0; i < list_actuated_joints_.size(); i++)
+        {
+            joint_signs[i] = signs_list->get(i).asFloat64();
+            if ((joint_signs[i] != 1.0) && (joint_signs[i] != -1.0))
+            {
+                yError() << module_name_ + "::configure. Error: each value in 'joint_signs' must be either 1.0 or -1.0.";
+                return false;
+            }
+        }
+    }
+
     /* Configure robot I/O */
-    if (!robot_.configure(robot_name, list_actuated_joints_, "/" + module_name_))
+    if (!robot_.configure(robot_name, list_actuated_joints_, joint_signs, "/" + module_name_))
     {
         yError() << module_name_ + "::configure. Error: cannot initialize the component for input/output communication with the robot.";
         return false;
     }
 
     /* Configure forward kinematics. */
-    if (!fk_.configure(robot_urdf_path, robot_.getJointsList(), robot_.getActuatedJointsList(), "root_link", "head"))
+    if (!fk_.configure(robot_urdf_path, robot_.getJointsList(), robot_.getActuatedJointsList(), "base_link", "head_link"))
     {
         yError() << module_name_ + "::configure. Error: cannot configure the forward kinematics.";
         return false;

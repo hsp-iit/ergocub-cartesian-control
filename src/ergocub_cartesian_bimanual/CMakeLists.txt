@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.28)
 project(ergocub_bimanual LANGUAGES CXX)
 
@@ -31,6 +32,13 @@ find_package(iDynTree REQUIRED)
 
 # ProxSuite
 find_package(proxsuite REQUIRED)
+
+#if(BUILD_BIMANUAL_EXECUTABLE)
+  # BipedalLocomotionFramework (for logging)
+#  find_package(BipedalLocomotionFramework 0.18.0
+ #   COMPONENTS  VectorsCollection
+ #               ParametersHandlerYarpImplementation REQUIRED)
+#endif()
 
 # Python bindings 
 option(BUILD_PYTHON "Build Python bindings for bimanual IK" ON)
@@ -99,6 +107,8 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                                            YARP::YARP_eigen
                                            cub-joint-control
                                            utils
+ #                                          BipedalLocomotion::VectorsCollection
+  #                                         BipedalLocomotion::ParametersHandlerYarpImplementation
   )
 
   # YARP logging is always enabled via includes; no special defines needed

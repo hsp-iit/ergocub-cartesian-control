@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
-find_package(YARP 3.8.0 REQUIRED COMPONENTS os sig dev)
+find_package(YARP 4.0.0 REQUIRED COMPONENTS os sig dev)
 
 # Include directories
 include_directories(include ${YARP_INCLUDE_DIRS})

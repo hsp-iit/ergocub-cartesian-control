@@ -55,11 +55,11 @@ public:
 
 private:
     yarp::dev::PolyDriver drv_;
-    yarp::dev::IPositionDirect* p_direct_;
-    yarp::dev::IPositionControl* p_control_;
-    yarp::dev::IControlLimits* control_limits_;
-    yarp::dev::IControlMode* control_mode_;
-    yarp::dev::IEncoders* encoders_;
+    yarp::dev::IPositionDirect* p_direct_{nullptr};
+    yarp::dev::IPositionControl* p_control_{nullptr};
+    yarp::dev::IControlLimits* control_limits_{nullptr};
+    yarp::dev::IControlMode* control_mode_{nullptr};
+    yarp::dev::IEncoders* encoders_{nullptr};
 
     std::vector<std::string> joints_;
     int joints_modes_current_ = VOCAB_CM_UNKNOWN;

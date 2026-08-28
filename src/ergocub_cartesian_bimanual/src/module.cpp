@@ -15,13 +15,45 @@
 #include <optional>
 
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <sstream>
 #include <thread>
 
 #include <unsupported/Eigen/MatrixFunctions>
 
 using namespace std::literals::chrono_literals;
 
-Module::Module(const std::string &module_name):module_name_(module_name){}
+namespace
+{
+std::string findRobotUrdfFromEnvironment()
+{
+    const char* robotName = std::getenv("YARP_ROBOT_NAME");
+    const char* yarpDataDirs = std::getenv("YARP_DATA_DIRS");
+    if (robotName == nullptr || yarpDataDirs == nullptr)
+    {
+        return {};
+    }
+
+    std::stringstream dirs(yarpDataDirs);
+    std::string dir;
+    while (std::getline(dirs, dir, ':'))
+    {
+        const std::filesystem::path candidate = std::filesystem::path(dir) / "robots" / robotName / "model.urdf";
+        if (std::filesystem::exists(candidate))
+        {
+            return candidate.string();
+        }
+    }
+
+    return {};
+}
+} // namespace
+
+Module::Module(const std::string& module_name)
+    : module_name_(module_name)
+{
+}
 
 bool Module::configure(yarp::os::ResourceFinder &rf)
 {
@@ -56,6 +88,13 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     sample_time_ = 1.0 / COMMON_bot.find("rate").asFloat64();
     module_logging_ = COMMON_bot.find("module_logging").asBool();
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
+#if !ERGOCUB_HAS_BLF_LOGGER
+    if (module_logging_)
+    {
+        yWarning() << "[" + module_name_ + "::configure] BLF logger headers were not found; disabling module_logging.";
+        module_logging_ = false;
+    }
+#endif
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     query_port_.open("/" + module_name_ + COMMON_bot.find("query_port_name").asString());
     input_cmd_.open("/" + module_name_ + COMMON_bot.find("input_port_name").asString());
@@ -177,7 +216,11 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     /* Instantiate and initialize iDynTree-based forward kinematics. */
     {
         /* Get robot urdf path. */
-        const std::string robot_urdf_path = rf.findFileByName("model.urdf");
+        std::string robot_urdf_path = rf.findFileByName("model.urdf");
+        if (robot_urdf_path.empty())
+        {
+            robot_urdf_path = findRobotUrdfFromEnvironment();
+        }
         if (robot_urdf_path.empty())
         {
             yError() << "[" + module_name_ + "::configure] Error: cannot load the robot urdf path. Please chack that the YARP_ROBOT_NAME environment variable is set.";
@@ -271,7 +314,9 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendOrInit(cartesian_pos_weight, s(RIGHT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
             appendOrInit(cartesian_pos_p_gain, s(RIGHT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
             appendOrInit(cartesian_pos_d_gain, s(RIGHT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
-
+            yInfo() << "RIGHT_ARM cartesian_pos_weight: " << cartesian_pos_weight.transpose();
+            yInfo() << "RIGHT_ARM cartesian_pos_p_gain: " << cartesian_pos_p_gain.transpose();
+            yInfo() << "RIGHT_ARM cartesian_pos_d_gain: " << cartesian_pos_d_gain.transpose();
             appendOrInit(cartesian_ori_weight, s(RIGHT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
             appendOrInit(cartesian_ori_p_gain, s(RIGHT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
             appendOrInit(cartesian_ori_d_gain, s(RIGHT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));
@@ -292,7 +337,9 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendOrInit(cartesian_pos_weight, s(LEFT_ARM_bot.find("cartesian_pos_weight").asFloat64()));
             appendOrInit(cartesian_pos_p_gain, s(LEFT_ARM_bot.find("cartesian_pos_p_gain").asFloat64()));
             appendOrInit(cartesian_pos_d_gain, s(LEFT_ARM_bot.find("cartesian_pos_d_gain").asFloat64()));
-
+            yInfo() << "LEFT_ARM cartesian_pos_weight: " << cartesian_pos_weight.transpose();
+            yInfo() << "LEFT_ARM cartesian_pos_p_gain: " << cartesian_pos_p_gain.transpose();
+            yInfo() << "LEFT_ARM cartesian_pos_d_gain: " << cartesian_pos_d_gain.transpose();
             appendOrInit(cartesian_ori_weight, s(LEFT_ARM_bot.find("cartesian_ori_weight").asFloat64()));
             appendOrInit(cartesian_ori_p_gain, s(LEFT_ARM_bot.find("cartesian_ori_p_gain").asFloat64()));
             appendOrInit(cartesian_ori_d_gain, s(LEFT_ARM_bot.find("cartesian_ori_d_gain").asFloat64()));

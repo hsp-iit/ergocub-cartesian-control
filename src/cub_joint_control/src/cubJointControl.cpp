@@ -11,39 +11,70 @@
 #include <yarp/dev/PolyDriverList.h>
 #include <yarp/dev/IPositionControl.h>
 
+namespace
+{
+yarp::dev::SelectableControlModeEnum toSelectableControlMode(const int mode)
+{
+    return static_cast<yarp::dev::SelectableControlModeEnum>(mode);
+}
+
+std::vector<yarp::dev::SelectableControlModeEnum> toSelectableControlModes(const std::vector<int>& modes)
+{
+    std::vector<yarp::dev::SelectableControlModeEnum> yarpModes;
+    yarpModes.reserve(modes.size());
+    for (const int mode : modes)
+    {
+        yarpModes.push_back(toSelectableControlMode(mode));
+    }
+    return yarpModes;
+}
+
+std::vector<int> jointIndexes(const std::size_t joints)
+{
+    std::vector<int> indexes(joints);
+    for (std::size_t i = 0; i < joints; ++i)
+    {
+        indexes[i] = static_cast<int>(i);
+    }
+    return indexes;
+}
+} // namespace
+
 CubJointControl::~CubJointControl()
 {
-    yDebug() << class_name_ + "::~CubJointControl(). Closing the CubJointControl for the end-effector with name '" + ee_name_ + "'.";
+    const std::string ee_name = ee_name_.empty() ? "<unconfigured>" : ee_name_;
+
+    yDebug() << class_name_ + "::~CubJointControl(). Closing the CubJointControl for the end-effector with name '" + ee_name + "'.";
     /* Restore the original control mode. */
-    if (control_mode_ != nullptr)
+    if (control_mode_ != nullptr && joints_modes_original_.size() == joints_.size())
     {
-        if (!control_mode_->setControlModes(joints_modes_original_.data()))
+        if (!control_mode_->setControlModes(jointIndexes(joints_.size()), toSelectableControlModes(joints_modes_original_)))
         {
-            yError() << class_name_ << "::~CubJointControl(). Error: cannot restore original joints control modes for the end-effector with name '" + ee_name_ + "'.";
+            yError() << class_name_ << "::~CubJointControl(). Error: cannot restore original joints control modes for the end-effector with name '" + ee_name + "'.";
         }
     }
 
     /* Restore the original joints speeds. */
-    if (p_control_ != nullptr)
+    if (p_control_ != nullptr && joints_speeds_original_.size() == joints_.size())
     {
-        if (!p_control_->setRefSpeeds(joints_speeds_original_.data()))
+        if (!p_control_->setTrajSpeeds(joints_speeds_original_.data()))
         {
-            yError() << class_name_ << "::~CubJointControl(). Error: cannot restore original joints speeds for the end-effector with name '" + ee_name_ + "'.";
+            yError() << class_name_ << "::~CubJointControl(). Error: cannot restore original joints speeds for the end-effector with name '" + ee_name + "'.";
         }
     }
 
-    yDebug() << class_name_ + "::~CubJointControl(). Closing the PolyDriver for the end-effector with name '" + ee_name_ + "'.";
+    yDebug() << class_name_ + "::~CubJointControl(). Closing the PolyDriver for the end-effector with name '" + ee_name + "'.";
 
     /* Close the driver. */
     if (drv_.isValid())
     {
         if (!drv_.close())
         {
-            yError() << class_name_ << "::~CubJointControl(). Error: cannot close the driver for the end-effector with name '" + ee_name_ + "'.";
+            yError() << class_name_ << "::~CubJointControl(). Error: cannot close the driver for the end-effector with name '" + ee_name + "'.";
         }
     }
 
-    yDebug() << class_name_ + "::~CubJointControl(). CubJointControl for the end-effector with name '" + ee_name_ + "' closed successfully.";
+    yDebug() << class_name_ + "::~CubJointControl(). CubJointControl for the end-effector with name '" + ee_name + "' closed successfully.";
 }
 
 
@@ -71,10 +102,20 @@ bool CubJointControl::setMode(const std::string& mode)
     }
 
     std::vector<int> modes(joints_.size(), des_mode);
-    if (!control_mode_->setControlModes(modes.data()))
+    if (!control_mode_->setControlModes(jointIndexes(joints_.size()), toSelectableControlModes(modes)))
     {
-        yError() << class_name_ + "::setMode(). Error: Cannot set desired control mode for the joints of the end-effector with name '" + ee_name_ + "' using IControlMode::setControlModes().";
-        return false;
+        yWarning() << class_name_ + "::setMode(). Cannot set desired control mode for all joints of the end-effector with name '" + ee_name_ + "'. Trying joint by joint.";
+
+        for (std::size_t i = 0; i < joints_.size(); ++i)
+        {
+            if (!control_mode_->setControlMode(static_cast<int>(i), toSelectableControlMode(des_mode)))
+            {
+                yError() << class_name_ + "::setMode(). Error: cannot set desired control mode for joint"
+                         << i << "(" << joints_[i] << ")"
+                         << "of the end-effector with name '" + ee_name_ + "'.";
+                return false;
+            }
+        }
     }
 
     joints_modes_current_ = des_mode;
@@ -100,9 +141,9 @@ bool CubJointControl::setSpeeds(const Eigen::VectorXd& speeds)
     /* Convert to degrees per seconds. */
     Eigen::VectorXd speeds_deg = speeds * 180.0 / M_PI;
 
-    if (!p_control_->setRefSpeeds(speeds_deg.data()))
+    if (!p_control_->setTrajSpeeds(speeds_deg.data()))
     {
-        yError() << class_name_ + "::setSpeeds(). Error: cannot call IPositionControl::setRefSpeeds() for the end-effector with name '" + ee_name_ + "'.";
+        yError() << class_name_ + "::setSpeeds(). Error: cannot call IPositionControl::setTrajSpeeds() for the end-effector with name '" + ee_name_ + "'.";
         return false;
     }
 
@@ -181,7 +222,7 @@ std::optional<bool> CubJointControl::isMotionDone()
 
     bool ret = false;
 
-    if (!p_control_->checkMotionDone(&ret))
+    if (!p_control_->checkMotionDone(ret))
     {
         yError() << class_name_ + "::isMotionDone(). Error: cannot call IPositionControl::checkMotionDone() for the end-effector with name '" + ee_name_ + "'.";
         return {};
@@ -193,6 +234,11 @@ std::optional<bool> CubJointControl::isMotionDone()
 
 bool CubJointControl::moveToStreaming(const Eigen::VectorXd& joints)
 {
+    if (joints_modes_current_ == VOCAB_CM_POSITION)
+    {
+        return moveTo(joints, false);
+    }
+
     if (!p_direct_)
     {
         yError() << class_name_ + "::moveToStreaming(). Error: p_direct_ not defined for the end-effector with name '" + ee_name_ + "'.";
@@ -300,7 +346,7 @@ bool CubJointControl::configure(const yarp::os::Bottle& group)
     joints_speeds_original_.resize(joints_.size());
     for (int i = 0; i < joints_.size(); ++i)
     {
-        if (!p_control_->getRefSpeed(i, i + joints_speeds_original_.data()))
+        if (!p_control_->getTrajSpeed(i, i + joints_speeds_original_.data()))
         {
             yError() << class_name_ + "::configure(). Cannot backup the current joints speeds for the end-effector with name '" + ee_name_ + "'.";
             return false;
@@ -369,6 +415,12 @@ bool CubJointControl::configureJointsMode(const std::string& mode)
     {
         if(!setMode(mode))
         {
+            if (mode == "Streaming")
+            {
+                yWarning() << class_name_ + "::configureJointsMode(). Cannot set 'Streaming' control mode for the end-effector with name '" + ee_name_ + "'. Falling back to 'NonStreaming'.";
+                return configureJointsMode("NonStreaming");
+            }
+
             yError() << class_name_ + "::configureJointsMode(). Error: Cannot set desired control mode for the joints of the end-effector with name '" + ee_name_ + "'. See errors above.";
             return false;
         }
@@ -384,7 +436,15 @@ bool CubJointControl::getControlModes(std::vector<int>& joint_modes)
     int max_attempt = 10;
     for (int attempts = 1; attempts <= max_attempt; attempts++)
     {
-        success = control_mode_->getControlModes(joint_modes.data());
+        std::vector<yarp::dev::ControlModeEnum> yarp_modes(joint_modes.size());
+        success = control_mode_->getControlModes(yarp_modes);
+        if (success)
+        {
+            for (std::size_t i = 0; i < yarp_modes.size(); ++i)
+            {
+                joint_modes[i] = static_cast<int>(yarp_modes[i]);
+            }
+        }
         if (success)
             break;
         yarp::os::Time::delay(0.1);
@@ -498,7 +558,7 @@ std::optional<std::unordered_map<std::string, Eigen::VectorXd>> CubJointControl:
     Eigen::VectorXd lower(joints_.size());
 
     for (int i = 0; i < joints_.size(); ++i)
-        if (!control_limits_->getLimits(i, &lower[i], &upper[i]))
+        if (!control_limits_->getPosLimits(i, &lower[i], &upper[i]))
             return {};
 
     upper *= M_PI / 180.0;

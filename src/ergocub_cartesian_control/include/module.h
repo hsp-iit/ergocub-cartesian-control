@@ -10,7 +10,12 @@
 #include <yarp/sig/Vector.h>
 #include <yarp/os/Port.h>
 
+#if __has_include(<BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>)
+#define ERGOCUB_HAS_BLF_LOGGER 1
 #include <BipedalLocomotion/YarpUtilities/VectorsCollectionServer.h>
+#else
+#define ERGOCUB_HAS_BLF_LOGGER 0
+#endif
 
 #include <ForwardKinematicsiDynTree.h>
 #include <DifferentialInverseKinematicsQP.h>
@@ -156,7 +161,9 @@ private:
 
     /* Logging */
     void log();
+#if ERGOCUB_HAS_BLF_LOGGER
     BipedalLocomotion::YarpUtilities::VectorsCollectionServer m_vectorsCollectionServer; /** Logger server. */
+#endif
 
     /* Thrift service configuration */
     bool configureService(const yarp::os::ResourceFinder &rf, const std::string rpc_port_name);

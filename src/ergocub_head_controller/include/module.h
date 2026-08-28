@@ -69,7 +69,7 @@ private:
      * Please be *very* careful when changing this as including torso joints will cause
      * the controller to also use them to track the gazing point.
      */
-    const std::vector<std::string> list_actuated_joints_ = {"neck_pitch", "neck_roll", "neck_yaw"}; //, "camera_tilt"
+    const std::vector<std::string> list_actuated_joints_ = {"neck_pitch_joint", "neck_yaw_joint"}; //, "camera_tilt"
 
     /* Storage. */
     struct joint_storage{

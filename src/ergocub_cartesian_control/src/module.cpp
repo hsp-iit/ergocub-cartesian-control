@@ -6,7 +6,9 @@
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Searchable.h>
 
+#if ERGOCUB_HAS_BLF_LOGGER
 #include <BipedalLocomotion/ParametersHandler/YarpImplementation.h>
+#endif
 
 #include <utils/utils.h>
 #include <utils/utils.hpp>
@@ -68,6 +70,13 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     sample_time_ = 1.0 / COMMON_bot.find("rate").asFloat64();
     module_logging_ = COMMON_bot.find("module_logging").asBool();
     module_verbose_ = COMMON_bot.find("module_verbose").asBool();
+#if !ERGOCUB_HAS_BLF_LOGGER
+    if (module_logging_)
+    {
+        yWarning() << module_name_ + "::configure(). BLF logger headers were not found; disabling module_logging.";
+        module_logging_ = false;
+    }
+#endif
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     const std::string rpc_local_port_name = COMMON_bot.find("rpc_local_port_name").asString();
     double duration = COMMON_bot.find("traj_duration").asFloat64();
@@ -333,6 +342,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     if (module_logging_)
     {
+#if ERGOCUB_HAS_BLF_LOGGER
         /* Open ports for logging */
         const std::string arm_name = ARM_bot.find("name").asString();
 
@@ -373,7 +383,10 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
 
         m_vectorsCollectionServer.finalizeMetadata();
-
+#else
+        yWarning() << module_name_ + "::configure(). BLF logger support is not available; logging disabled.";
+        module_logging_ = false;
+#endif
     }
 
     yInfo() << module_name_ + "::configure(): Configuration done.";
@@ -881,7 +894,7 @@ void Module::log()
 
     if(module_logging_)
     {
-
+#if ERGOCUB_HAS_BLF_LOGGER
         Eigen::VectorXd vec3(3);
 
         m_vectorsCollectionServer.prepareData();
@@ -936,7 +949,7 @@ void Module::log()
         m_vectorsCollectionServer.populateData("measured::manips", eigenToStdVecDouble(vec3));
 
         m_vectorsCollectionServer.sendData();
-
+#endif
     }
 
 }

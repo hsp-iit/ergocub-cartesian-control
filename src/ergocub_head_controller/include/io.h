@@ -23,7 +23,7 @@ public:
 
     ~IO();
 
-    bool configure(const std::string& robot, const std::vector<std::string>& actuated_joints_list, const std::string& local_port_name);
+    bool configure(const std::string& robot, const std::vector<std::string>& actuated_joints_list, const Eigen::VectorXd& actuated_joints_signs, const std::string& local_port_name);
 
     std::size_t getNumberActuatedJoints();
 
@@ -49,11 +49,12 @@ private:
     yarp::dev::IControlMode* mode_;
 
     /* List of joint names. */
-    const std::vector<std::string> joints_list_ = {"torso_roll", "torso_pitch", "torso_yaw", "neck_pitch", "neck_roll", "neck_yaw"};    //, "camera_tilt"
+    const std::vector<std::string> joints_list_ = {"torso_yaw_joint", "neck_pitch_joint", "neck_yaw_joint"};    //, "camera_tilt"
 
     /* List of the actuated joints indexes and names. */
     std::vector<std::string> actuated_joints_list_;
     std::vector<int> actuated_joints_indexes_;
+    Eigen::VectorXd actuated_joints_signs_;
 
     /* List of the non actuated joints indexes and names. */
     std::vector<int> non_actuated_joints_indexes_;

@@ -32,6 +32,7 @@ private:
     bool closeDevices();
     bool readFingerCommands();
     bool applyFingerPositions();
+    void keepThumbAddFixed(std::vector<double>& positions);
 
     // YARP devices
     yarp::dev::PolyDriver m_leftArmDevice;

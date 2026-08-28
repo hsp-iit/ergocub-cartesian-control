@@ -11,6 +11,10 @@ using namespace yarp::os;
 using namespace yarp::dev;
 using namespace ergocub::controller;
 
+namespace {
+constexpr double thumbAddFixedPosition = 70.0;
+}
+
 FingerControllerModule::FingerControllerModule()
     : m_leftEncoders(nullptr)
     , m_rightEncoders(nullptr)
@@ -97,6 +101,8 @@ bool FingerControllerModule::configure(ResourceFinder& rf)
     m_targetPositions.resize(m_numJoints, 0.0);
     m_currentPositions.resize(m_numJoints, 0.0);
     m_lastSentPositions.resize(m_numJoints, 0.0);
+    keepThumbAddFixed(m_targetPositions);
+    keepThumbAddFixed(m_lastSentPositions);
 
     yInfo() << "Controlling" << m_numJoints << "finger joints";
 
@@ -109,10 +115,8 @@ bool FingerControllerModule::configure(ResourceFinder& rf)
     yInfo() << "Opened command port:" << commandPortName;
     yInfo() << "Send finger commands as bottles with" << m_numJoints << "values";
 
-    // Initialize target and current positions
-    m_targetPositions.resize(m_numJoints, 0.0);
-    m_currentPositions.resize(m_numJoints, 0.0);
-
+    yInfo() << "Target positions:" << m_targetPositions;
+    yInfo() << "Current positions:" << m_currentPositions;
     m_isActive = true;
     yInfo() << "Finger controller module configured successfully";
     
@@ -275,6 +279,7 @@ bool FingerControllerModule::readFingerCommands()
     for (int i = 0; i < m_numJoints; ++i) {
         m_targetPositions[i] = command->get(i).asFloat64();
     }
+    keepThumbAddFixed(m_targetPositions);
 
     return true;
 }
@@ -282,6 +287,8 @@ bool FingerControllerModule::readFingerCommands()
 bool FingerControllerModule::applyFingerPositions()
 {
     if (!m_isActive) return false;
+
+    keepThumbAddFixed(m_targetPositions);
 
     // Calcoliamo lo spostamento massimo ammesso in questo ciclo (delta_theta = omega * delta_t)
     // m_fingerSpeed deve essere in gradi/s se i target sono in gradi, o rad/s se i target sono in rad
@@ -301,10 +308,12 @@ bool FingerControllerModule::applyFingerPositions()
         } else {
             filteredRefs[i] = target;
         }
-        
+
         // Aggiorniamo la memoria per il prossimo ciclo
         m_lastSentPositions[i] = filteredRefs[i];
     }
+    keepThumbAddFixed(filteredRefs);
+    keepThumbAddFixed(m_lastSentPositions);
 
     // --- INVIO COMANDI ---
     const int fingerIndices[] = {0, 1, 2, 3, 4, 5};
@@ -325,4 +334,22 @@ bool FingerControllerModule::applyFingerPositions()
     }
 
     return true;
+}
+
+void FingerControllerModule::keepThumbAddFixed(std::vector<double>& positions)
+{
+    if (positions.empty()) {
+        return;
+    }
+
+    if (m_useLeftHand) {
+        positions[0] = thumbAddFixedPosition;
+    }
+
+    if (m_useRightHand) {
+        const size_t rightThumbAddIndex = m_useLeftHand ? 6 : 0;
+        if (rightThumbAddIndex < positions.size()) {
+            positions[rightThumbAddIndex] = thumbAddFixedPosition;
+        }
+    }
 }
