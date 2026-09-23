@@ -9,11 +9,18 @@
 #include <yarp/os/Port.h>
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
+#include <yarp/os/RpcServer.h>
 
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+#include <WalkingControllers/YarpUtilities/HumanState.h>
+#endif
+
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string.h>
 #include <mutex>
+#include <vector>
 
 #include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
@@ -35,6 +42,9 @@ public:
     bool interruptModule() override;
 
     bool updateModule() override;
+
+    /* RPC interface (rpc_port_name) */
+    bool respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply) override;
 
     /* Query interface */
     bool go_to_position(double x, double y, double z, const std::string& arm);
@@ -63,6 +73,20 @@ private:
     yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
     yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
     bool no_control_{false};
+    yarp::os::RpcServer rpc_port_;
+
+    /* Retargeting to the walking-controller: joint references are sent to it instead of the motors.
+     * The RPC thread only sets the requested mode, the switch happens in updateModule. */
+    std::atomic<bool> retargeting_requested_{false};
+    std::atomic<bool> retargeting_active_{false};
+    bool applyRetargetingRequest();
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    yarp::os::BufferedPort<WalkingControllers::YarpUtilities::HumanState> retargeting_port_;
+    std::vector<std::string> retargeting_joint_names_;
+    std::string retargeting_remote_port_name_;
+    bool connectRetargetingPort();
+    bool publishToWalkingController(const Eigen::VectorXd &joint_refs);
+#endif
 
     /* Forward kinematics */
     struct SUBCHAINS

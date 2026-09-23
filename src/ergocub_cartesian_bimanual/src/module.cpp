@@ -1,6 +1,7 @@
 #include <ergocub_cartesian_bimanual/module.h>
 
 #include <yarp/os/LogStream.h>
+#include <yarp/os/Network.h>
 #include <yarp/os/Searchable.h>
 #include <yarp/eigen/Eigen.h>
 #include <cmath>
@@ -64,6 +65,17 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     {
         joints_pos_port_.open(("/" + module_name_ + "/joints_pos:o").c_str());
     }
+    const std::string rpc_port_name = COMMON_bot.check("rpc_port_name", yarp::os::Value("/rpc:i")).asString();
+    const std::string retargeting_port_name = COMMON_bot.check("retargeting_port_name", yarp::os::Value("/retargeting:o")).asString();
+    retargeting_requested_ = COMMON_bot.check("retargeting_enabled", yarp::os::Value(false)).asBool();
+#ifndef BIMANUAL_WITH_WALKING_RETARGETING
+    if (retargeting_requested_)
+    {
+        yError() << "[" + module_name_ + "::configure] Error: retargeting_enabled is true but the module was built without WalkingControllers.";
+        return false;
+    }
+    (void)retargeting_port_name;
+#endif
 
     /* Enabling of the chains is optional */
     right_enabled_ = rf.check("RIGHT_ARM");
@@ -122,6 +134,44 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             return false;
         }
     }
+
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    /* Retargeting port: joint names follow the order of the compound chain (right, left, torso). */
+    {
+        if (right_enabled_)
+        {
+            auto names = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+        if (left_enabled_)
+        {
+            auto names = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+        if (torso_enabled_)
+        {
+            auto names = utils::loadVectorString(TORSO_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+
+        if (!retargeting_port_.open("/" + module_name_ + retargeting_port_name))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: cannot open the retargeting port.";
+            return false;
+        }
+
+        retargeting_remote_port_name_ = COMMON_bot.check("retargeting_remote_port_name", yarp::os::Value("/walking-coordinator/humanState:i")).asString();
+        if (!connectRetargetingPort())
+        {
+            if (retargeting_requested_)
+            {
+                yError() << "[" + module_name_ + "::configure] Error: retargeting_enabled is true but the walking-controller is not reachable.";
+                return false;
+            }
+            yWarning() << "[" + module_name_ + "::configure] Walking-controller not reachable, the connection will be retried on enable_retargeting.";
+        }
+    }
+#endif
 
     /* Instantiate and initialize CHAINS and SUBCHAINS. */
     {
@@ -446,6 +496,17 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     setState(State::Stop);
 
+    retargeting_active_ = retargeting_requested_.load();
+
+    /* RPC port, served by respond() in a separate thread. */
+    if (!rpc_port_.open("/" + module_name_ + rpc_port_name))
+    {
+        yError() << "[" + module_name_ + "::configure] Error: cannot open the rpc port.";
+        return false;
+    }
+    attach(rpc_port_);
+
+    yInfo() << "[" + module_name_ + "::configure] Retargeting to the walking-controller:" << (retargeting_active_ ? "enabled" : "disabled");
     yInfo() << "[" + module_name_ + "::configure] Done.";
 
     return true;
@@ -456,6 +517,10 @@ bool Module::close()
     query_port_.close();
     input_cmd_.close();
     joints_pos_port_.close();
+    rpc_port_.close();
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    retargeting_port_.close();
+#endif
 
     return true;
 }
@@ -470,6 +535,10 @@ bool Module::interruptModule()
     query_port_.interrupt();
     input_cmd_.interrupt();
     joints_pos_port_.interrupt();
+    rpc_port_.interrupt();
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    retargeting_port_.interrupt();
+#endif
 
     return true;
 }
@@ -493,6 +562,12 @@ bool Module::updateModule()
     }
 
     measFksUpdate();
+
+    if (!applyRetargetingRequest())
+    {
+        yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+        return false;
+    }
 
     if(checkAndReadNewInputs())
     {
@@ -985,6 +1060,13 @@ bool Module::moveChains()
 {
     Eigen::VectorXd joint_refs = compound_chain_.joints.pos;
 
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    if (retargeting_active_)
+    {
+        return publishToWalkingController(joint_refs);
+    }
+#endif
+
     int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
     int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
     int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
@@ -1018,6 +1100,89 @@ bool Module::moveChains()
         }
         offset += nT;
     }
+
+    return true;
+}
+
+
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+bool Module::connectRetargetingPort()
+{
+    const std::string local = retargeting_port_.getName();
+    if (yarp::os::Network::isConnected(local, retargeting_remote_port_name_, true))
+    {
+        return true;
+    }
+
+    if (!yarp::os::Network::connect(local, retargeting_remote_port_name_, "", true))
+    {
+        yError() << "[" + module_name_ + "::connectRetargetingPort] Error: cannot connect" << local << "to" << retargeting_remote_port_name_;
+        return false;
+    }
+
+    return true;
+}
+
+
+bool Module::publishToWalkingController(const Eigen::VectorXd &joint_refs)
+{
+    if (retargeting_joint_names_.size() != static_cast<size_t>(joint_refs.size()))
+    {
+        yError() << "[" + module_name_ + "::publishToWalkingController] Error: joint size mismatch.";
+        return false;
+    }
+
+    auto &walking_module_data = retargeting_port_.prepare();
+    walking_module_data.jointNames = retargeting_joint_names_;
+    walking_module_data.positions.assign(joint_refs.data(), joint_refs.data() + joint_refs.size());
+
+    retargeting_port_.write();
+
+    return true;
+}
+#endif
+
+
+bool Module::applyRetargetingRequest()
+{
+    const bool requested = retargeting_requested_;
+    if (requested == retargeting_active_)
+    {
+        return true;
+    }
+
+    /* Stop and restart the IK from the measured configuration, so that the new
+     * destination of the references does not see a jump. */
+    Eigen::VectorXd meas_pos;
+    if (right_enabled_) appendEigen(meas_pos, *right_arm_.joint_pos);
+    if (left_enabled_)  appendEigen(meas_pos, *left_arm_.joint_pos);
+    if (torso_enabled_) appendEigen(meas_pos, *torso_.joint_pos);
+
+    setState(State::Stop);
+    compound_chain_.vel2pos_integrator->set_initial_condition(meas_pos);
+    compound_chain_.acc2vel_integrator->set_initial_condition(Eigen::VectorXd::Zero(meas_pos.size()));
+    qp_result_ = Eigen::VectorXd::Zero(meas_pos.size());
+    encodersRefUpdate();
+
+    if (right_enabled_)
+        right_desired_pose_ = right_chain_.measFk->get_ee_transform();
+    if (left_enabled_)
+        left_desired_pose_ = left_chain_.measFk->get_ee_transform();
+
+    /* The walking-controller may have changed the control mode of the joints. */
+    if (!requested)
+    {
+        if ((right_enabled_ && !right_arm_.cjc.configureJointsMode("Streaming")) ||
+            (left_enabled_  && !left_arm_.cjc.configureJointsMode("Streaming"))  ||
+            (torso_enabled_ && !torso_.cjc.configureJointsMode("Streaming")))
+        {
+            yError() << "[" + module_name_ + "::applyRetargetingRequest] Error: cannot set 'Streaming' control mode. See the errors above.";
+            return false;
+        }
+    }
+
+    retargeting_active_ = requested;
+    yInfo() << "[" + module_name_ + "::applyRetargetingRequest] Retargeting to the walking-controller" << (retargeting_active_ ? "enabled" : "disabled");
 
     return true;
 }
