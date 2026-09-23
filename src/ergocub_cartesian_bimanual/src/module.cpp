@@ -3,6 +3,7 @@
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
 #include <yarp/os/Searchable.h>
+#include <yarp/os/Time.h>
 #include <yarp/eigen/Eigen.h>
 #include <cmath>
 
@@ -1130,6 +1131,23 @@ bool Module::publishToWalkingController(const Eigen::VectorXd &joint_refs)
     {
         yError() << "[" + module_name_ + "::publishToWalkingController] Error: joint size mismatch.";
         return false;
+    }
+
+    /* The connection is lost when the walking-controller restarts: retry once per second. */
+    if (retargeting_port_.getOutputCount() == 0)
+    {
+        const double now = yarp::os::Time::now();
+        if (now - retargeting_last_reconnect_ < 1.0)
+        {
+            return true;
+        }
+        retargeting_last_reconnect_ = now;
+        if (!connectRetargetingPort())
+        {
+            yWarning() << "[" + module_name_ + "::publishToWalkingController] Warning: walking-controller not connected, references are not sent.";
+            return true;
+        }
+        yInfo() << "[" + module_name_ + "::publishToWalkingController] Reconnected to" << retargeting_remote_port_name_;
     }
 
     auto &walking_module_data = retargeting_port_.prepare();

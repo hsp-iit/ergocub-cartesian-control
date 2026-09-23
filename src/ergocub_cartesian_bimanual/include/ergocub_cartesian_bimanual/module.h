@@ -84,6 +84,7 @@ private:
     yarp::os::BufferedPort<WalkingControllers::YarpUtilities::HumanState> retargeting_port_;
     std::vector<std::string> retargeting_joint_names_;
     std::string retargeting_remote_port_name_;
+    double retargeting_last_reconnect_{0.0};
     bool connectRetargetingPort();
     bool publishToWalkingController(const Eigen::VectorXd &joint_refs);
 #endif
