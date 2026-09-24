@@ -1,6 +1,7 @@
 #include <ergocub_cartesian_bimanual/module.h>
 
 #include <yarp/os/LogStream.h>
+#include <yarp/os/Network.h>
 #include <yarp/os/Searchable.h>
 #include <yarp/eigen/Eigen.h>
 #include <cmath>
@@ -122,6 +123,43 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             return false;
         }
     }
+
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    /* Walking port: joint names follow the order of the compound chain (right, left, torso). */
+    {
+        yarp::os::Bottle WC_CTRL_bot;
+        if (!groupCheckAndRetrieve(rf, "WC_CTRL", WC_CTRL_bot))
+            return false;
+
+        if  (!(utils::checkParameters({{"walking_port_name"}}, "", WC_CTRL_bot, "", utils::ParameterType::String, false)))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: mandatory parameter(s) for WC_CTRL group missing or invalid.";
+            return false;
+        }
+
+        if (!walking_port_.open("/" + module_name_ + WC_CTRL_bot.find("walking_port_name").asString()))
+        {
+            yError() << "[" + module_name_ + "::configure] Error: cannot open the walking port.";
+            return false;
+        }
+
+        if (right_enabled_)
+        {
+            auto names = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+        if (left_enabled_)
+        {
+            auto names = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+        if (torso_enabled_)
+        {
+            auto names = utils::loadVectorString(TORSO_bot, "joint_axes_list");
+            retargeting_joint_names_.insert(retargeting_joint_names_.end(), names.begin(), names.end());
+        }
+    }
+#endif
 
     /* Instantiate and initialize CHAINS and SUBCHAINS. */
     {
@@ -456,6 +494,9 @@ bool Module::close()
     query_port_.close();
     input_cmd_.close();
     joints_pos_port_.close();
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    walking_port_.close();
+#endif
 
     return true;
 }
@@ -470,6 +511,9 @@ bool Module::interruptModule()
     query_port_.interrupt();
     input_cmd_.interrupt();
     joints_pos_port_.interrupt();
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    walking_port_.interrupt();
+#endif
 
     return true;
 }
@@ -517,14 +561,13 @@ bool Module::updateModule()
             yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
             return false;
         }
-        if (!no_control_)
+
+        if(!moveChains())
         {
-            if(!moveChains())
-            {
-                yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
-                return false;
-            }
+            yError()<< "[" + module_name_ + "::updateModule] See error(s) above.";
+            return false;
         }
+
         if(isMotionDone())
         {
             compound_chain_.vel2pos_integrator->set_initial_condition(compound_chain_.joints.pos);
@@ -534,14 +577,6 @@ bool Module::updateModule()
 
     }
 
-    if (no_control_)
-    {
-        yarp::sig::Vector& out = joints_pos_port_.prepare();
-        out.resize(compound_chain_.joints.pos.size());
-        for (size_t i = 0; i < out.size(); ++i)
-            out[i] = compound_chain_.joints.pos[i];
-        joints_pos_port_.write();
-    }
 
     checkAndReadQuery();
     
@@ -985,6 +1020,20 @@ bool Module::moveChains()
 {
     Eigen::VectorXd joint_refs = compound_chain_.joints.pos;
 
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    return publishToWalkingController(joint_refs);
+#endif
+
+    if (no_control_)
+    {
+        yarp::sig::Vector& out = joints_pos_port_.prepare();
+        out.resize(compound_chain_.joints.pos.size());
+        for (size_t i = 0; i < out.size(); ++i)
+            out[i] = compound_chain_.joints.pos[i];
+        joints_pos_port_.write();
+        return true;
+    }
+
     int nR = right_enabled_ ? right_arm_.cjc.getNumberJoints() : 0;
     int nL = left_enabled_  ? left_arm_.cjc.getNumberJoints()  : 0;
     int nT = torso_enabled_ ? torso_.cjc.getNumberJoints()     : 0;
@@ -1021,6 +1070,27 @@ bool Module::moveChains()
 
     return true;
 }
+
+
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+
+bool Module::publishToWalkingController(const Eigen::VectorXd &joint_refs)
+{
+    if (retargeting_joint_names_.size() != static_cast<size_t>(joint_refs.size()))
+    {
+        yError() << "[" + module_name_ + "::publishToWalkingController] Error: joint size mismatch.";
+        return false;
+    }
+
+    auto &walking_module_data = walking_port_.prepare();
+    walking_module_data.jointNames = retargeting_joint_names_;
+    walking_module_data.positions.assign(joint_refs.data(), joint_refs.data() + joint_refs.size());
+
+    walking_port_.write();
+
+    return true;
+}
+#endif
 
 
 bool Module::isMotionDone()

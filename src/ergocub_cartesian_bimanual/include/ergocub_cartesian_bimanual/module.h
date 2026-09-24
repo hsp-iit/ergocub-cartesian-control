@@ -9,11 +9,18 @@
 #include <yarp/os/Port.h>
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
+#include <yarp/os/RpcServer.h>
 
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+#include <WalkingControllers/YarpUtilities/HumanState.h>
+#endif
+
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string.h>
 #include <mutex>
+#include <vector>
 
 #include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
@@ -63,6 +70,14 @@ private:
     yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
     yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
     bool no_control_{false};
+
+    /* Retargeting to the walking-controller: joint references are sent to it instead of the motors.
+     * The RPC thread only sets the requested mode, the switch happens in updateModule. */
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    yarp::os::BufferedPort<WalkingControllers::YarpUtilities::HumanState> walking_port_;
+    std::vector<std::string> retargeting_joint_names_;
+    bool publishToWalkingController(const Eigen::VectorXd &joint_refs);
+#endif
 
     /* Forward kinematics */
     struct SUBCHAINS
