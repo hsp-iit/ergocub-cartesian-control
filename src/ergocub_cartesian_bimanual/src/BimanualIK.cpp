@@ -1,5 +1,5 @@
 #include <ergocub_cartesian_bimanual/BimanualIK.h>
-#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsPinocchio.h>
 #include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 #include <ergocub_cartesian_bimanual/Integrator.h>
 #include <stdexcept>
@@ -42,10 +42,10 @@ BimanualIK::BimanualIK(const std::string& urdf,
 {
   // Build per-arm joint lists including torso if provided
   std::vector<std::string> r_full=right_joints, l_full=left_joints; r_full.insert(r_full.end(), torso_joints.begin(), torso_joints.end()); l_full.insert(l_full.end(), torso_joints.begin(), torso_joints.end());
-  right_fk_     = std::make_unique<ForwardKinematicsiDynTree>(urdf, r_full, right_root_frame, right_ee_frame);
-  right_fk_ref_ = std::make_unique<ForwardKinematicsiDynTree>(urdf, r_full, right_root_frame, right_ee_frame);
-  left_fk_      = std::make_unique<ForwardKinematicsiDynTree>(urdf, l_full, left_root_frame, left_ee_frame);
-  left_fk_ref_  = std::make_unique<ForwardKinematicsiDynTree>(urdf, l_full, left_root_frame, left_ee_frame);
+  right_fk_     = std::make_unique<ForwardKinematicsPinocchio>(urdf, r_full, right_root_frame, right_ee_frame);
+  right_fk_ref_ = std::make_unique<ForwardKinematicsPinocchio>(urdf, r_full, right_root_frame, right_ee_frame);
+  left_fk_      = std::make_unique<ForwardKinematicsPinocchio>(urdf, l_full, left_root_frame, left_ee_frame);
+  left_fk_ref_  = std::make_unique<ForwardKinematicsPinocchio>(urdf, l_full, left_root_frame, left_ee_frame);
 
   ik_ = std::make_unique<DifferentialInverseKinematicsQP>(dt_, false, nR_, nL_, nT_,
     joint_pos_weights, joint_pos_kp, joint_pos_kd,

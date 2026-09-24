@@ -9,7 +9,7 @@
 #include <optional>
 #include <tuple>
 
-class ForwardKinematicsiDynTree;
+class ForwardKinematicsPinocchio;
 class DifferentialInverseKinematicsQP;
 class Integrator;
 
@@ -64,8 +64,8 @@ private:
   int nR_{0}, nL_{0}, nT_{0}, N_{0};
   double dt_;
   // FK of measured/reference models per arm
-  std::unique_ptr<ForwardKinematicsiDynTree> right_fk_, right_fk_ref_;
-  std::unique_ptr<ForwardKinematicsiDynTree> left_fk_,  left_fk_ref_;
+  std::unique_ptr<ForwardKinematicsPinocchio> right_fk_, right_fk_ref_;
+  std::unique_ptr<ForwardKinematicsPinocchio> left_fk_,  left_fk_ref_;
   std::unique_ptr<DifferentialInverseKinematicsQP> ik_;
   std::unique_ptr<Integrator> acc2vel_, vel2pos_;
   Eigen::VectorXd q_, dq_, ddq_;

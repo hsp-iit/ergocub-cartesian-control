@@ -174,7 +174,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
     }
 
-    /* Instantiate and initialize iDynTree-based forward kinematics. */
+    /* Instantiate and initialize Pinocchio-based forward kinematics. */
     {
         /* Get robot urdf path. */
         const std::string robot_urdf_path = rf.findFileByName("model.urdf");
@@ -198,8 +198,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             if (torso_enabled_)
                 right_chain_joints_list.insert(right_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
 
-            right_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
-            right_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+            right_chain_.measFk = std::make_unique<ForwardKinematicsPinocchio>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+            right_chain_.refFk  = std::make_unique<ForwardKinematicsPinocchio>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
         }
 
         /* left arm*/
@@ -209,8 +209,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             if (torso_enabled_)
                 left_chain_joints_list.insert(left_chain_joints_list.end(), torso_joints_list.begin(), torso_joints_list.end());
 
-            left_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
-            left_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+            left_chain_.measFk = std::make_unique<ForwardKinematicsPinocchio>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+            left_chain_.refFk  = std::make_unique<ForwardKinematicsPinocchio>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
         }
     }
 
@@ -446,7 +446,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     #ifdef LOGGING_RERUN
     logger_ = std::make_unique<rerun::RecordingStream>(module_name_);
-    logger_->spawn().handle();
 
     auto jointSeriesNames = [] (const std::vector<std::string>& jointNames)
     {
@@ -1130,8 +1129,8 @@ void Module::log()
         if (!chain.refFk || !chain.measFk)
             return;
 
-        logTransform3D("/" + module_name_ + "/" + log_string + "/ref/pose", chain.refFk->get_ee_transform().translation(), chain.refFk->get_ee_transform().rotation());
-        logTransform3D("/" + module_name_ + "/" + log_string + "/meas/pose", chain.measFk->get_ee_transform().translation(), chain.measFk->get_ee_transform().rotation());
+        logTransform3D("/" + module_name_ + "/" + log_string + "/pose/ref", chain.refFk->get_ee_transform().translation(), chain.refFk->get_ee_transform().rotation());
+        logTransform3D("/" + module_name_ + "/" + log_string + "/pose/meas", chain.measFk->get_ee_transform().translation(), chain.measFk->get_ee_transform().rotation());
 
         logger_->log(
             "/" + module_name_ + "/" + log_string + "/joints",

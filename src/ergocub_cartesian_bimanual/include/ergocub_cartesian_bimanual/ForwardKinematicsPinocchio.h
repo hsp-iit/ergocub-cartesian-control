@@ -5,37 +5,30 @@
  * MIT license. See the accompanying LICENSE file for details.
  */
 
-#ifndef FORWARD_KINEMATICS_IDYNTREE_H
-#define FORWARD_KINEMATICS_IDYNTREE_H
+#ifndef FORWARD_KINEMATICS_PINOCCHIO_H
+#define FORWARD_KINEMATICS_PINOCCHIO_H
 
 #include <Eigen/Dense>
 
-#include <iDynTree/KinDynComputations.h>
-#include <iDynTree/EigenHelpers.h>
+#include <pinocchio/multibody/data.hpp>
+#include <pinocchio/multibody/model.hpp>
 
 #include <ergocub_cartesian_bimanual/ForwardKinematics.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 /**
  * Concrete class implementing the forward kinematics of a kinematic chain
- * using the iDynTree library given the path to a URDF file, the list of joints of interest,
- * and the names of the root and end-effector frames.
+ * using Pinocchio.
  */
-class ForwardKinematicsiDynTree : public ForwardKinematics
+class ForwardKinematicsPinocchio : public ForwardKinematics
 {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        /**
-         * Constructor.
-         * @param urdf_path Path to the URDF file.
-         * @param joints_list A list of strings containing the names of the joints of interest.
-         * @param root_frame_name The name of root frame.
-         * @param ee_frame_name The name of the frame attached to the end-effector.
-         */
-        ForwardKinematicsiDynTree
+        ForwardKinematicsPinocchio
         (
             const std::string& urdf_path,
             const std::vector<std::string>& joints_list,
@@ -43,7 +36,7 @@ class ForwardKinematicsiDynTree : public ForwardKinematics
             const std::string& ee_frame_name
         );
 
-        ~ForwardKinematicsiDynTree() = default;
+        ~ForwardKinematicsPinocchio() = default;
 
         void update() override;
 
@@ -66,26 +59,29 @@ class ForwardKinematicsiDynTree : public ForwardKinematics
         std::vector<std::string> get_joints_list() override;
 
     private:
-        const std::string log_prefix_ = "ForwardKinematicsiDynTree";
+        struct JointBinding
+        {
+            int input_index{0};
+            int q_index{0};
+            int v_index{0};
+        };
 
-        iDynTree::KinDynComputations chain_;
+        const std::string log_prefix_ = "ForwardKinematicsPinocchio";
+
+        pinocchio::Model model_;
+        std::unique_ptr<pinocchio::Data> data_;
 
         std::vector<std::string> joints_list_;
+        std::vector<JointBinding> joint_bindings_;
 
-        iDynTree::FrameIndex root_frame_idx_;
+        pinocchio::FrameIndex root_frame_idx_{0};
+        pinocchio::FrameIndex ee_frame_idx_{0};
 
-        iDynTree::FrameIndex ee_frame_idx_;
-
+        Eigen::VectorXd q_, dq_, ddq_, zero_ddq_;
+        Eigen::MatrixXd full_jacobian_, jacobian_;
         Eigen::Transform<double, 3, Eigen::Affine> transform_;
+        Eigen::Vector3d lin_vel_, ang_vel_, lin_acc_, ang_acc_;
+        Eigen::VectorXd bias_acc_;
+};
 
-        Eigen::MatrixXd jacobian_;
-
-        Eigen::Vector3d lin_vel_, ang_vel_;
-
-        Eigen::Vector3d lin_acc_, ang_acc_;
-
-        Eigen::VectorXd joint_acc_, bias_acc_;
-    };
-
-
-#endif /* FORWARD_KINEMATICS_IDYNTREE_H */
+#endif /* FORWARD_KINEMATICS_PINOCCHIO_H */

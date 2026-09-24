@@ -16,7 +16,7 @@
 #include <mutex>
 #include <cstdint>
 
-#include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
+#include <ergocub_cartesian_bimanual/ForwardKinematicsPinocchio.h>
 #include <cub-joint-control/cubJointControl.h>
 
 #include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
@@ -80,7 +80,7 @@ private:
     struct CHAINS
     {
         JOINTSTATE measJoints, refJoints;
-        std::unique_ptr<ForwardKinematicsiDynTree> measFk, refFk;
+        std::unique_ptr<ForwardKinematicsPinocchio> measFk, refFk;
         Eigen::Affine3d home_pose;
     } right_chain_, left_chain_;
     bool encodersMeasUpdate();

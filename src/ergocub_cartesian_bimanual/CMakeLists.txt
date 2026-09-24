@@ -26,8 +26,32 @@ endif()
 # Eigen3
 find_package(Eigen3 REQUIRED)
 
-# iDynTree
-find_package(iDynTree REQUIRED)
+# Pinocchio
+set(PINOCCHIO_PREFIX "" CACHE PATH "Pinocchio installation prefix, such as a pixi/conda environment")
+if(PINOCCHIO_PREFIX)
+  list(PREPEND CMAKE_PREFIX_PATH "${PINOCCHIO_PREFIX}")
+endif()
+if(DEFINED ENV{PIXI_PROJECT_ROOT} AND DEFINED ENV{PIXI_ENVIRONMENT_NAME})
+  list(APPEND CMAKE_PREFIX_PATH "$ENV{PIXI_PROJECT_ROOT}/.pixi/envs/$ENV{PIXI_ENVIRONMENT_NAME}")
+endif()
+
+find_package(pinocchio CONFIG QUIET)
+if(NOT pinocchio_FOUND)
+  find_package(Pinocchio CONFIG QUIET)
+endif()
+if(NOT pinocchio_FOUND AND NOT Pinocchio_FOUND)
+  message(FATAL_ERROR "Could not find Pinocchio. Set CMAKE_PREFIX_PATH, PINOCCHIO_PREFIX or pinocchio_DIR to the Pinocchio installation.")
+endif()
+
+if(TARGET pinocchio::pinocchio)
+  set(PINOCCHIO_TARGET pinocchio::pinocchio)
+elseif(TARGET Pinocchio::pinocchio)
+  set(PINOCCHIO_TARGET Pinocchio::pinocchio)
+elseif(TARGET pinocchio)
+  set(PINOCCHIO_TARGET pinocchio)
+else()
+  message(FATAL_ERROR "Pinocchio was found, but no known imported target is available.")
+endif()
 
 # ProxSuite
 find_package(proxsuite REQUIRED)
@@ -69,10 +93,10 @@ add_library(ergocub_cartesian_bimanual_core
   include/ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h
   include/ergocub_cartesian_bimanual/Integrator.h
   include/ergocub_cartesian_bimanual/ForwardKinematics.h
-  include/ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h
+  include/ergocub_cartesian_bimanual/ForwardKinematicsPinocchio.h
   src/DifferentialInverseKinematicsQP.cpp
   src/Integrator.cpp
-  src/ForwardKinematicsiDynTree.cpp
+  src/ForwardKinematicsPinocchio.cpp
 )
 
 set_target_properties(ergocub_cartesian_bimanual_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -83,7 +107,7 @@ target_include_directories(ergocub_cartesian_bimanual_core PUBLIC
 
 target_link_libraries(ergocub_cartesian_bimanual_core PUBLIC
   Eigen3::Eigen
-  ${iDynTree_LIBRARIES}
+  ${PINOCCHIO_TARGET}
   proxsuite::proxsuite
 )
 
