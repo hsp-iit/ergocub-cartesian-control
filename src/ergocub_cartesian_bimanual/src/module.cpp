@@ -65,7 +65,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     {
         joints_pos_port_.open(("/" + module_name_ + "/joints_pos:o").c_str());
     }
-    const std::string rpc_port_name = COMMON_bot.check("rpc_port_name", yarp::os::Value("/rpc:i")).asString();
     const std::string retargeting_port_name = COMMON_bot.check("retargeting_port_name", yarp::os::Value("/retargeting:o")).asString();
     retargeting_requested_ = COMMON_bot.check("retargeting_enabled", yarp::os::Value(false)).asBool();
 #ifndef BIMANUAL_WITH_WALKING_RETARGETING
@@ -498,14 +497,6 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     retargeting_active_ = retargeting_requested_.load();
 
-    /* RPC port, served by respond() in a separate thread. */
-    if (!rpc_port_.open("/" + module_name_ + rpc_port_name))
-    {
-        yError() << "[" + module_name_ + "::configure] Error: cannot open the rpc port.";
-        return false;
-    }
-    attach(rpc_port_);
-
     yInfo() << "[" + module_name_ + "::configure] Retargeting to the walking-controller:" << (retargeting_active_ ? "enabled" : "disabled");
     yInfo() << "[" + module_name_ + "::configure] Done.";
 
@@ -517,7 +508,6 @@ bool Module::close()
     query_port_.close();
     input_cmd_.close();
     joints_pos_port_.close();
-    rpc_port_.close();
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
     retargeting_port_.close();
 #endif
@@ -535,7 +525,6 @@ bool Module::interruptModule()
     query_port_.interrupt();
     input_cmd_.interrupt();
     joints_pos_port_.interrupt();
-    rpc_port_.interrupt();
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
     retargeting_port_.interrupt();
 #endif

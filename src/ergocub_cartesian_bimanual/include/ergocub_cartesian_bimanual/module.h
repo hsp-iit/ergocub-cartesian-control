@@ -43,7 +43,6 @@ public:
 
     bool updateModule() override;
 
-    /* RPC interface (rpc_port_name) */
     bool respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply) override;
 
     /* Query interface */
@@ -73,7 +72,6 @@ private:
     yarp::os::BufferedPort<yarp::os::Bottle> query_port_{};
     yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
     bool no_control_{false};
-    yarp::os::RpcServer rpc_port_;
 
     /* Retargeting to the walking-controller: joint references are sent to it instead of the motors.
      * The RPC thread only sets the requested mode, the switch happens in updateModule. */
