@@ -86,6 +86,33 @@ public:
 
     void set_desired_ee_acceleration(const Eigen::Ref<const Eigen::Vector3d> &r_lin_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &r_ang_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &l_lin_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &l_ang_acc = Eigen::Vector3d::Zero());
 
+    /**
+     * Upper-arm direction task (optional, used to choose the elbow swivel).
+     * Gains are indexed [right, left]; a zero weight disables the task for that arm.
+     */
+    void set_arm_dir_params(const Eigen::Vector2d &weight, const Eigen::Vector2d &p_gain, const Eigen::Vector2d &d_gain);
+
+    /**
+     * Upper-arm state for the arm direction task, for one arm (right == true).
+     * @param rotation upper-arm link rotation in the root frame.
+     * @param ang_vel upper-arm link angular velocity in the root frame.
+     * @param jacobian 6 x (arm + torso) upper-arm jacobian (mixed representation), same columns as the hand jacobian.
+     * @param bias_acc 6D upper-arm bias acceleration.
+     */
+    void set_arm_dir_state(const bool right,
+                           const Eigen::Ref<const Eigen::Matrix3d> &rotation,
+                           const Eigen::Ref<const Eigen::Vector3d> &ang_vel,
+                           const Eigen::Ref<const Eigen::MatrixXd> &jacobian,
+                           const Eigen::Ref<const Eigen::VectorXd> &bias_acc);
+
+    /**
+     * Desired shoulder->elbow unit direction (root frame) for one arm; active == false disables the task
+     * for that arm (e.g. input timeout). local_dir is the same direction expressed in the upper-arm frame.
+     */
+    void set_desired_arm_dir(const bool right, const bool active,
+                             const Eigen::Ref<const Eigen::Vector3d> &desired_dir,
+                             const Eigen::Ref<const Eigen::Vector3d> &local_dir);
+
     bool set_joint_limits(
         const Eigen::Ref<const Eigen::VectorXd> &lower_limits,
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
@@ -179,6 +206,19 @@ private:
     Eigen::Vector3d left_lin_vel_, left_ang_vel_, left_lin_acc_, left_ang_acc_;
     Eigen::Vector3d left_desired_lin_vel_, left_desired_ang_vel_, left_desired_lin_acc_, left_desired_ang_acc_;
     Eigen::MatrixXd J_pos_, J_ori_;
+
+    /* Upper-arm direction task, [0] right, [1] left. */
+    struct ArmDir
+    {
+        bool active = false;
+        Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+        Eigen::Vector3d ang_vel = Eigen::Vector3d::Zero();
+        Eigen::MatrixXd jacobian;
+        Eigen::VectorXd bias_acc = Eigen::VectorXd::Zero(6);
+        Eigen::Vector3d desired = Eigen::Vector3d::UnitX();
+        Eigen::Vector3d local = Eigen::Vector3d::UnitX();
+    } arm_dir_[2];
+    Eigen::Vector2d arm_dir_weight_ = Eigen::Vector2d::Zero(), arm_dir_p_gain_ = Eigen::Vector2d::Zero(), arm_dir_d_gain_ = Eigen::Vector2d::Zero();
 
     std::optional<Eigen::VectorXd> qp_results_;
 
