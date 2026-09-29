@@ -61,6 +61,9 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     const bool qp_verbose = COMMON_bot.find("qp_verbose").asBool();
     query_port_.open("/" + module_name_ + COMMON_bot.find("query_port_name").asString());
     input_cmd_.open("/" + module_name_ + COMMON_bot.find("input_port_name").asString());
+    /* Optional upper-arm direction input: right xyz, left xyz (unit shoulder->elbow, root frame). */
+    arm_dir_port_.open("/" + module_name_ + (COMMON_bot.check("arm_dir_port_name") ? COMMON_bot.find("arm_dir_port_name").asString() : std::string("/arm_dir:i")));
+    arm_dir_timeout_ = COMMON_bot.check("arm_dir_timeout") ? COMMON_bot.find("arm_dir_timeout").asFloat64() : 0.5;
     no_control_ = COMMON_bot.check("no_control") ? COMMON_bot.find("no_control").asBool() : false;
     if (no_control_)
     {
@@ -125,8 +128,17 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
     }
 
-#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    /* Retargeting to the walking-controller is optional: without the WC_CTRL group the motors are commanded. */
+    walking_retargeting_ = rf.check("WC_CTRL");
+#ifndef BIMANUAL_WITH_WALKING_RETARGETING
+    if (walking_retargeting_)
+    {
+        yError() << "[" + module_name_ + "::configure] Error: WC_CTRL group given but the module was built without WalkingControllers.";
+        return false;
+    }
+#else
     /* Walking port: joint names follow the order of the compound chain (right, left, torso). */
+    if (walking_retargeting_)
     {
         yarp::os::Bottle WC_CTRL_bot;
         if (!groupCheckAndRetrieve(rf, "WC_CTRL", WC_CTRL_bot))
@@ -225,6 +237,26 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
         std::vector<std::string> torso_joints_list;
 
+        /* Upper-arm FK, only if the arm direction task has a positive weight (default 0: disabled). */
+        auto setupUpperArm = [&](const yarp::os::Bottle &bot, CHAINS &chain, const std::vector<std::string> &joints_list, const std::string &default_frame)
+        {
+            if (!(bot.check("arm_dir_weight") && bot.find("arm_dir_weight").asFloat64() > 0.0))
+                return true;
+            const std::string frame = bot.check("upper_arm_frame_name") ? bot.find("upper_arm_frame_name").asString() : default_frame;
+            if (bot.check("upper_arm_dir_local"))
+            {
+                const Eigen::VectorXd local = utils::loadVectorDouble(bot, "upper_arm_dir_local");
+                if (local.size() != 3 || local.norm() < 1e-6)
+                {
+                    yError() << "[" + module_name_ + "::configure] Error: upper_arm_dir_local must be a non-zero 3D vector.";
+                    return false;
+                }
+                chain.upper_arm_dir_local = local.normalized();
+            }
+            chain.upperArmFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, joints_list, bot.find("root_frame_name").asString(), frame);
+            return true;
+        };
+
         if (torso_enabled_)
         {
             torso_joints_list = utils::loadVectorString(TORSO_bot, "joint_axes_list");
@@ -239,6 +271,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
             right_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
             right_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, right_chain_joints_list, RIGHT_ARM_bot.find("root_frame_name").asString(), RIGHT_ARM_bot.find("ee_frame_name").asString());
+            if (!setupUpperArm(RIGHT_ARM_bot, right_chain_, right_chain_joints_list, "r_upper_arm"))
+                return false;
         }
 
         /* left arm*/
@@ -250,6 +284,8 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
             left_chain_.measFk = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
             left_chain_.refFk  = std::make_unique<ForwardKinematicsiDynTree>(robot_urdf_path, left_chain_joints_list, LEFT_ARM_bot.find("root_frame_name").asString(), LEFT_ARM_bot.find("ee_frame_name").asString());
+            if (!setupUpperArm(LEFT_ARM_bot, left_chain_, left_chain_joints_list, "l_upper_arm"))
+                return false;
         }
     }
 
@@ -347,6 +383,14 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendOrInit(cartesian_ori_d_gain, s(0.0));
         }
 
+        // Upper-arm direction task (optional, default weight/gains 0 = disabled)
+        auto opt = [](const yarp::os::Bottle &bot, const std::string &key) { return bot.check(key) ? bot.find(key).asFloat64() : 0.0; };
+        Eigen::Vector2d arm_dir_weight = Eigen::Vector2d::Zero(), arm_dir_p_gain = Eigen::Vector2d::Zero(), arm_dir_d_gain = Eigen::Vector2d::Zero();
+        if (right_enabled_ && right_chain_.upperArmFk)
+            { arm_dir_weight(0) = opt(RIGHT_ARM_bot, "arm_dir_weight"); arm_dir_p_gain(0) = opt(RIGHT_ARM_bot, "arm_dir_p_gain"); arm_dir_d_gain(0) = opt(RIGHT_ARM_bot, "arm_dir_d_gain"); }
+        if (left_enabled_ && left_chain_.upperArmFk)
+            { arm_dir_weight(1) = opt(LEFT_ARM_bot, "arm_dir_weight"); arm_dir_p_gain(1) = opt(LEFT_ARM_bot, "arm_dir_p_gain"); arm_dir_d_gain(1) = opt(LEFT_ARM_bot, "arm_dir_d_gain"); }
+
         // RIGHT AND LEFT ARM: stop_vel
         std::vector<double> stop_vels, manip_dyns, manip_ths;
         if (right_enabled_) { stop_vels.push_back(RIGHT_ARM_bot.find("stop_vel").asFloat64());
@@ -390,6 +434,9 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             yError() << "[" + module_name_ + "::configure] See error(s) above.";
             return false;
         }
+        compound_chain_.ik->set_arm_dir_params(arm_dir_weight, arm_dir_p_gain, arm_dir_d_gain);
+        if (arm_dir_weight.maxCoeff() > 0.0)
+            yInfo() << "[" + module_name_ + "::configure] Upper-arm direction task enabled, weight (right, left):" << arm_dir_weight(0) << arm_dir_weight(1);
 
         // Retrieve joint limits and set in IK
         Eigen::VectorXd lower_limits, upper_limits;
@@ -485,6 +532,7 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     setState(State::Stop);
 
+    yInfo() << "[" + module_name_ + "::configure] Retargeting to the walking-controller:" << (walking_retargeting_ ? "enabled" : "disabled");
     yInfo() << "[" + module_name_ + "::configure] Done.";
 
     return true;
@@ -494,6 +542,7 @@ bool Module::close()
 {
     query_port_.close();
     input_cmd_.close();
+    arm_dir_port_.close();
     joints_pos_port_.close();
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
     walking_port_.close();
@@ -511,6 +560,7 @@ bool Module::interruptModule()
 {
     query_port_.interrupt();
     input_cmd_.interrupt();
+    arm_dir_port_.interrupt();
     joints_pos_port_.interrupt();
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
     walking_port_.interrupt();
@@ -543,6 +593,7 @@ bool Module::updateModule()
     {
         setState(State::Running);
     }
+    checkAndReadArmDir();
 
     if(getState()==State::Running)
     {
@@ -939,7 +990,35 @@ bool Module::refFksUpdate()
         left_chain_.refFk->update();
     }
 
+    if (right_enabled_ && right_chain_.upperArmFk)
+    {
+        right_chain_.upperArmFk->set_joints_state(right_chain_.refJoints.pos, right_chain_.refJoints.vel, right_chain_.refJoints.acc);
+        right_chain_.upperArmFk->update();
+    }
+
+    if (left_enabled_ && left_chain_.upperArmFk)
+    {
+        left_chain_.upperArmFk->set_joints_state(left_chain_.refJoints.pos, left_chain_.refJoints.vel, left_chain_.refJoints.acc);
+        left_chain_.upperArmFk->update();
+    }
+
     return true;
+}
+
+
+void Module::checkAndReadArmDir()
+{
+    yarp::sig::Vector* input = arm_dir_port_.read(false);
+    if (input == nullptr)
+        return;
+    if (input->size() != 6)
+    {
+        yWarning() << "[" + module_name_ + "::" + __func__ + "] arm_dir input must have 6 elements (right xyz, left xyz), got" << input->size();
+        return;
+    }
+    right_chain_.desired_arm_dir = Eigen::Vector3d((*input)[0], (*input)[1], (*input)[2]);
+    left_chain_.desired_arm_dir  = Eigen::Vector3d((*input)[3], (*input)[4], (*input)[5]);
+    arm_dir_last_time_ = yarp::os::Time::now();
 }
 
 
@@ -975,6 +1054,17 @@ void Module::ikUpdate()
         rT, rVl, rVa, rAl, rAa, rJ, rB,
         lT, lVl, lVa, lAl, lAa, lJ, lB
     );
+
+    for (CHAINS* chain : {&right_chain_, &left_chain_})
+    {
+        const bool right = chain == &right_chain_;
+        if ((right ? right_enabled_ : left_enabled_) && chain->upperArmFk)
+            compound_chain_.ik->set_arm_dir_state(right,
+                                                  chain->upperArmFk->get_ee_transform().rotation(),
+                                                  chain->upperArmFk->get_ee_ang_vel(),
+                                                  chain->upperArmFk->get_jacobian(),
+                                                  chain->upperArmFk->get_ee_bias_acc());
+    }
 }
 
 
@@ -996,6 +1086,11 @@ void Module::setDesiredTrajectory()
     compound_chain_.ik->set_desired_ee_transform(rPose, lPose);
     compound_chain_.ik->set_desired_ee_twist(rLv, rAv, lLv, lAv);
     compound_chain_.ik->set_desired_ee_acceleration(rLa, rAa, lLa, lAa);
+
+    // Arm direction: disabled until the first message and after arm_dir_timeout_ without messages.
+    const bool arm_dir_fresh = arm_dir_last_time_ >= 0.0 && (yarp::os::Time::now() - arm_dir_last_time_) < arm_dir_timeout_;
+    compound_chain_.ik->set_desired_arm_dir(true,  arm_dir_fresh && right_enabled_ && right_chain_.upperArmFk != nullptr, right_chain_.desired_arm_dir, right_chain_.upper_arm_dir_local);
+    compound_chain_.ik->set_desired_arm_dir(false, arm_dir_fresh && left_enabled_  && left_chain_.upperArmFk  != nullptr, left_chain_.desired_arm_dir,  left_chain_.upper_arm_dir_local);
 }
 
 
@@ -1022,7 +1117,8 @@ bool Module::moveChains()
     Eigen::VectorXd joint_refs = compound_chain_.joints.pos;
 
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
-    return publishToWalkingController(joint_refs);
+    if (walking_retargeting_)
+        return publishToWalkingController(joint_refs);
 #endif
 
     if (no_control_)
