@@ -15,7 +15,7 @@ CubJointControl::~CubJointControl()
 {
     yDebug() << class_name_ + "::~CubJointControl(). Closing the CubJointControl for the end-effector with name '" + ee_name_ + "'.";
     /* Restore the original control mode. */
-    if (control_mode_ != nullptr)
+    if (restore_modes_ && control_mode_ != nullptr)
     {
         if (!control_mode_->setControlModes(joints_modes_original_.data()))
         {
@@ -24,7 +24,7 @@ CubJointControl::~CubJointControl()
     }
 
     /* Restore the original joints speeds. */
-    if (p_control_ != nullptr)
+    if (restore_modes_ && p_control_ != nullptr)
     {
         if (!p_control_->setRefSpeeds(joints_speeds_original_.data()))
         {
@@ -215,7 +215,7 @@ bool CubJointControl::moveToStreaming(const Eigen::VectorXd& joints)
 }
 
 
-bool CubJointControl::configure(const yarp::os::Bottle& group)
+bool CubJointControl::configure(const yarp::os::Bottle& group, const bool set_modes)
 {
     /* Check for mandatory parameters. */
     if (!utils::checkParameters({{"joint_local_port", "name"}}, "", group, "", utils::ParameterType::String, false) ||
@@ -288,6 +288,20 @@ bool CubJointControl::configure(const yarp::os::Bottle& group)
         return false;
     }
 
+    if (!set_modes)
+    {
+        /* Wait for the first encoder reading (the mode backup below gives the same time otherwise). */
+        std::vector<double> joints(joints_.size());
+        for (int attempts = 1; attempts <= 20; attempts++)
+        {
+            if (encoders_->getEncoders(joints.data()))
+                return true;
+            yarp::os::Time::delay(0.1);
+        }
+        yError() << class_name_ + "::configure(). Error: cannot read the encoders for the end-effector with name '" + ee_name_ + "'.";
+        return false;
+    }
+
     /* Backup control modes and reference speeds at configuration time. */
     joints_modes_original_.resize(joints_.size());
     if (!getControlModes(joints_modes_original_))
@@ -313,6 +327,7 @@ bool CubJointControl::configure(const yarp::os::Bottle& group)
         return false;
     }
     joints_modes_current_ = VOCAB_CM_POSITION;
+    restore_modes_ = true;
 
     return true;
 }

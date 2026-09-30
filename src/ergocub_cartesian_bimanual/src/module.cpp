@@ -177,16 +177,17 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
     }
 #endif
 
-    /* Instantiate and initialize CHAINS and SUBCHAINS. */
+    /* Instantiate and initialize CHAINS and SUBCHAINS. With the walking-controller retargeting the joints belong
+       to the walking-controller (position direct): their control modes are left untouched. */
     {
         if (right_enabled_)
         {
-            if (!right_arm_.cjc.configure(RIGHT_ARM_bot))
+            if (!right_arm_.cjc.configure(RIGHT_ARM_bot, !walking_retargeting_))
             {
                 yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for RIGHT_ARM. See the errors above.";
                 return false;
             }
-            if (!right_arm_.cjc.configureJointsMode("Streaming"))
+            if (!walking_retargeting_ && !right_arm_.cjc.configureJointsMode("Streaming"))
             {
                 yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for RIGHT_ARM. See the errors above.";
                 return false;
@@ -195,12 +196,12 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
         if (left_enabled_)
         {
-            if (!left_arm_.cjc.configure(LEFT_ARM_bot))
+            if (!left_arm_.cjc.configure(LEFT_ARM_bot, !walking_retargeting_))
             {
                 yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for LEFT_ARM. See the errors above.";
                 return false;
             }
-            if (!left_arm_.cjc.configureJointsMode("Streaming"))
+            if (!walking_retargeting_ && !left_arm_.cjc.configureJointsMode("Streaming"))
             {
                 yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for LEFT_ARM. See the errors above.";
                 return false;
@@ -209,12 +210,12 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
         if (torso_enabled_)
         {
-            if (!torso_.cjc.configure(TORSO_bot))
+            if (!torso_.cjc.configure(TORSO_bot, !walking_retargeting_))
             {
                 yError() << "[" + module_name_ + "::configure] Error: cannot configure the cubJointControl instance for TORSO. See the errors above.";
                 return false;
             }
-            if (!torso_.cjc.configureJointsMode("Streaming"))
+            if (!walking_retargeting_ && !torso_.cjc.configureJointsMode("Streaming"))
             {
                 yError() << "[" + module_name_ + "::configure] Error: Cannot set 'Streaming' control mode for TORSO. See the errors above.";
                 return false;

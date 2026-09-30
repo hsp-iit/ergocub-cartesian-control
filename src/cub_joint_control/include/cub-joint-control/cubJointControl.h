@@ -29,7 +29,9 @@ public:
     bool moveTo(const Eigen::VectorXd& joints, const bool& blocking) override;
     std::optional<bool> isMotionDone() override;
     bool moveToStreaming(const Eigen::VectorXd& joints) override;
-    bool configure(const yarp::os::Bottle& group);
+    /* With set_modes false the control modes and speeds are neither changed nor restored (e.g. joints owned by the walking-controller). */
+    bool configure(const yarp::os::Bottle& group, const bool set_modes);
+    bool configure(const yarp::os::Bottle& group) override { return configure(group, true); }
 
     /* Configure control mode.*/
     bool configureJointsMode(const std::string& mode);
@@ -67,6 +69,7 @@ private:
     /* Backup variables for the original context. */
     std::vector<int> joints_modes_original_;
     std::vector<double> joints_speeds_original_;
+    bool restore_modes_ = false;
 
     std::string ee_name_;
 
