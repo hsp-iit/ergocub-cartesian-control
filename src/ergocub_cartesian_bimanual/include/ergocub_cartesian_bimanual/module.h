@@ -9,11 +9,18 @@
 #include <yarp/os/Port.h>
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
+#include <yarp/os/RpcServer.h>
 
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+#include <WalkingControllers/YarpUtilities/HumanState.h>
+#endif
+
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string.h>
 #include <mutex>
+#include <vector>
 
 #include <ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h>
 #include <cub-joint-control/cubJointControl.h>
@@ -64,6 +71,15 @@ private:
     yarp::os::BufferedPort<yarp::sig::Vector> input_cmd_{}, joints_pos_port_{};
     bool no_control_{false};
 
+    /* Retargeting to the walking-controller: when the WC_CTRL group is present, joint references
+     * are sent to it instead of the motors. */
+    bool walking_retargeting_{false};
+#ifdef BIMANUAL_WITH_WALKING_RETARGETING
+    yarp::os::BufferedPort<WalkingControllers::YarpUtilities::HumanState> walking_port_;
+    std::vector<std::string> retargeting_joint_names_;
+    bool publishToWalkingController(const Eigen::VectorXd &joint_refs);
+#endif
+
     /* Forward kinematics */
     struct SUBCHAINS
     {
@@ -79,6 +95,10 @@ private:
         JOINTSTATE measJoints, refJoints;
         std::unique_ptr<ForwardKinematicsiDynTree> measFk, refFk;
         Eigen::Affine3d home_pose;
+        /* Upper-arm direction task (optional): FK of the upper-arm link on the reference joints. */
+        std::unique_ptr<ForwardKinematicsiDynTree> upperArmFk;
+        Eigen::Vector3d upper_arm_dir_local = -Eigen::Vector3d::UnitZ();
+        Eigen::Vector3d desired_arm_dir = Eigen::Vector3d::Zero();
     } right_chain_, left_chain_;
     bool encodersMeasUpdate();
     bool encodersRefUpdate();
@@ -112,6 +132,10 @@ private:
     /* Control input*/
     bool checkAndReadQuery();
     bool checkAndReadNewInputs();
+    void checkAndReadArmDir();
+    yarp::os::BufferedPort<yarp::sig::Vector> arm_dir_port_{};
+    double arm_dir_timeout_{0.5};
+    double arm_dir_last_time_{-1.0};
     Eigen::Affine3d right_desired_pose_, left_desired_pose_;
     Eigen::Vector3d right_desired_lin_vel_, right_desired_ang_vel_, right_desired_lin_acc_, right_desired_ang_acc_;
     Eigen::Vector3d left_desired_lin_vel_, left_desired_ang_vel_, left_desired_lin_acc_, left_desired_ang_acc_;

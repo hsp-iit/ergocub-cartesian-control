@@ -296,6 +296,40 @@ void DifferentialInverseKinematicsQP::set_desired_ee_acceleration(const Eigen::R
     left_desired_ang_acc_ = l_ang_acc;
 }
 
+void DifferentialInverseKinematicsQP::set_arm_dir_params(const Eigen::Vector2d &weight, const Eigen::Vector2d &p_gain, const Eigen::Vector2d &d_gain)
+{
+    arm_dir_weight_ = weight;
+    arm_dir_p_gain_ = p_gain;
+    arm_dir_d_gain_ = d_gain;
+}
+
+
+void DifferentialInverseKinematicsQP::set_arm_dir_state(const bool right,
+                                                        const Eigen::Ref<const Eigen::Matrix3d> &rotation,
+                                                        const Eigen::Ref<const Eigen::Vector3d> &ang_vel,
+                                                        const Eigen::Ref<const Eigen::MatrixXd> &jacobian,
+                                                        const Eigen::Ref<const Eigen::VectorXd> &bias_acc)
+{
+    ArmDir &a = arm_dir_[right ? 0 : 1];
+    a.rotation = rotation;
+    a.ang_vel = ang_vel;
+    a.jacobian = jacobian;
+    a.bias_acc = bias_acc;
+}
+
+
+void DifferentialInverseKinematicsQP::set_desired_arm_dir(const bool right, const bool active,
+                                                          const Eigen::Ref<const Eigen::Vector3d> &desired_dir,
+                                                          const Eigen::Ref<const Eigen::Vector3d> &local_dir)
+{
+    ArmDir &a = arm_dir_[right ? 0 : 1];
+    a.active = active && desired_dir.norm() > 1e-6;
+    if (a.active)
+        a.desired = desired_dir.normalized();
+    a.local = local_dir.normalized();
+}
+
+
 std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
 {
     /* --- J_pos_ / J_ori_ con copia sicura (gestisce catene disattive) --- */
@@ -366,6 +400,33 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
 
         P += J_ori_.transpose() * W_ang_cart_ * J_ori_;
         q += -2.0 * J_ori_.transpose() * W_ang_cart_ * ang_ref;
+    }
+
+    // Upper-arm direction: d = R_ua * d_local must point along d_des. Only the angular acceleration
+    // perpendicular to d moves it, so the task is projected on that plane (the rotation about the
+    // upper-arm axis stays free for the hand orientation).
+    for (int side = 0; side < 2; side++)
+    {
+        const ArmDir &a = arm_dir_[side];
+        const int n_arm = side == 0 ? nr : nl;
+        if (!a.active || arm_dir_weight_(side) <= 0.0 || n_arm == 0 || a.jacobian.cols() < n_arm + nt)
+            continue;
+
+        Eigen::MatrixXd J_ang = Eigen::MatrixXd::Zero(3, N);
+        const int c_arm = side == 0 ? 0 : nr;
+        J_ang.middleCols(c_arm, n_arm) = a.jacobian.block(3, 0, 3, n_arm);
+        if (nt > 0)
+            J_ang.middleCols(nr + nl, nt) = a.jacobian.block(3, n_arm, 3, nt);
+
+        const Eigen::Vector3d d = (a.rotation * a.local).normalized();
+        const Eigen::Matrix3d perp = Eigen::Matrix3d::Identity() - d * d.transpose();
+        const Eigen::Vector3d e = d.cross(a.desired);   // axis * sin(angle), already perpendicular to d
+        const Eigen::Vector3d ref = arm_dir_p_gain_(side) * e - arm_dir_d_gain_(side) * (perp * a.ang_vel)
+                                    - perp * a.bias_acc.tail<3>();
+        const Eigen::MatrixXd A = perp * J_ang;
+
+        P += arm_dir_weight_(side) * A.transpose() * A;
+        q += -2.0 * arm_dir_weight_(side) * A.transpose() * ref;
     }
 
     // Joint posture (PD)
