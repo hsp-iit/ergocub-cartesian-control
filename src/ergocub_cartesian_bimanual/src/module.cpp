@@ -292,6 +292,56 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
         }
     }
 
+    /* Self-collision avoidance (optional): model file from scripts/make_self_collision_model.py. */
+    if (COMMON_bot.check("self_collision_model"))
+    {
+        const std::string model_path = rf.findFileByName(COMMON_bot.find("self_collision_model").asString());
+        if (model_path.empty())
+        {
+            yError() << "[" + module_name_ + "::configure] Error: cannot find the self-collision model " + COMMON_bot.find("self_collision_model").asString();
+            return false;
+        }
+        std::vector<std::string> joints;
+        std::string root_frame;
+        if (right_enabled_)
+        {
+            const auto j = utils::loadVectorString(RIGHT_ARM_bot, "joint_axes_list");
+            joints.insert(joints.end(), j.begin(), j.end());
+            root_frame = RIGHT_ARM_bot.find("root_frame_name").asString();
+        }
+        if (left_enabled_)
+        {
+            const auto j = utils::loadVectorString(LEFT_ARM_bot, "joint_axes_list");
+            joints.insert(joints.end(), j.begin(), j.end());
+            root_frame = LEFT_ARM_bot.find("root_frame_name").asString();
+        }
+        if (torso_enabled_)
+        {
+            const auto j = utils::loadVectorString(TORSO_bot, "joint_axes_list");
+            joints.insert(joints.end(), j.begin(), j.end());
+        }
+        SelfCollision::Params params;
+        auto opt = [&](const std::string &key, double &value) { if (COMMON_bot.check(key)) value = COMMON_bot.find(key).asFloat64(); };
+        opt("self_collision_margin", params.margin);
+        opt("self_collision_activation", params.activation);
+        opt("self_collision_max_acc", params.max_acc);
+        opt("self_collision_repulsion_gain", params.repulsion_gain);
+        opt("self_collision_max_repulsion_vel", params.max_repulsion_vel);
+        if (COMMON_bot.check("self_collision_rows_per_pair"))
+            params.rows_per_pair = COMMON_bot.find("self_collision_rows_per_pair").asInt32();
+        try
+        {
+            self_collision_ = std::make_unique<SelfCollision>(rf.findFileByName("model.urdf"), joints, root_frame, model_path, params);
+        }
+        catch (const std::runtime_error &e)
+        {
+            yError() << "[" + module_name_ + "::configure] Error: " << e.what();
+            return false;
+        }
+        self_collision_port_.open("/" + module_name_ + "/self_collision:o");
+        yInfo() << "[" + module_name_ + "::configure] Self-collision avoidance from " + model_path + ", margin" << params.margin << "m";
+    }
+
     /* Instantiate and initialize QP_inverse kinematics. */
     {
         Eigen::VectorXd joint_limits_params;
@@ -478,10 +528,66 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
             appendEigen(upper_limits, (*t_joints_limit)["upper"]);
         }
 
+        // Optional, per group (degrees, in the joint_axes_list order): tighter joint limits (e.g. keep the elbow
+        // bent, away from the stretched-arm singularity) and joint speed limits.
+        Eigen::VectorXd max_vel;
+        {
+            int offset = 0;
+            auto tighten = [&](const yarp::os::Bottle &bot, const int n)
+            {
+                // A list of n values in degrees; anything not a number (e.g. "none") means no value, NaN. ("-" would be read as 0.)
+                auto load = [&](const std::string &key) -> Eigen::VectorXd {
+                    const yarp::os::Bottle *list = bot.find(key).asList();
+                    if (list == nullptr || list->size() != static_cast<std::size_t>(n))
+                        throw std::runtime_error(key + " must be a list of " + std::to_string(n) + " values");
+                    Eigen::VectorXd v(n);
+                    for (int i = 0; i < n; i++)
+                        v(i) = list->get(i).isFloat64() || list->get(i).isInt32() ? list->get(i).asFloat64() * M_PI / 180.0
+                                                                                   : std::numeric_limits<double>::quiet_NaN();
+                    return v;
+                };
+                if (bot.check("joint_lower_limits"))
+                {
+                    const Eigen::VectorXd v = load("joint_lower_limits");
+                    for (int i = 0; i < n; i++)
+                        if (std::isfinite(v(i)))
+                            lower_limits(offset + i) = std::max(lower_limits(offset + i), v(i));
+                }
+                if (bot.check("joint_upper_limits"))
+                {
+                    const Eigen::VectorXd v = load("joint_upper_limits");
+                    for (int i = 0; i < n; i++)
+                        if (std::isfinite(v(i)))
+                            upper_limits(offset + i) = std::min(upper_limits(offset + i), v(i));
+                }
+                Eigen::VectorXd v = Eigen::VectorXd::Constant(n, std::numeric_limits<double>::infinity());
+                if (bot.check("joint_max_vel"))
+                    v = load("joint_max_vel").unaryExpr([](double x) { return std::isfinite(x) ? x : std::numeric_limits<double>::infinity(); });
+                appendOrInit(max_vel, v);
+                offset += n;
+            };
+            try
+            {
+                if (right_enabled_) tighten(RIGHT_ARM_bot, right_arm_.joint_pos->size());
+                if (left_enabled_)  tighten(LEFT_ARM_bot, left_arm_.joint_pos->size());
+                if (torso_enabled_) tighten(TORSO_bot, torso_.joint_pos->size());
+            }
+            catch (const std::exception &e)
+            {
+                yError() << "[" + module_name_ + "::configure] Error:" << e.what();
+                return false;
+            }
+        }
+
         if(!compound_chain_.ik->set_joint_limits(lower_limits, upper_limits, joint_limits_params))
         {
             yError() << "[" + module_name_ + "::configure] See error(s) above.";
             return false;
+        }
+        if ((max_vel.array() < std::numeric_limits<double>::infinity()).any())
+        {
+            compound_chain_.ik->set_joint_max_velocity(max_vel);
+            yInfo() << "[" + module_name_ + "::configure] Joint speed limits [deg/s]:" << (max_vel * 180.0 / M_PI).transpose();
         }
 
         /* Instantiate and initialize integrators */
@@ -558,6 +664,7 @@ bool Module::close()
     arm_dir_port_.close();
     joints_pos_port_.close();
     rpc_port_.close();
+    self_collision_port_.close();
 #ifdef BIMANUAL_WITH_WALKING_RETARGETING
     retargeting_port_.close();
 #endif
@@ -1085,6 +1192,15 @@ void Module::ikUpdate()
         lT, lVl, lVa, lAl, lAa, lJ, lB
     );
 
+    if (self_collision_)
+    {
+        Eigen::MatrixXd G;
+        Eigen::VectorXd h;
+        self_collision_->update(compound_chain_.vel2pos_integrator->get_state(), compound_chain_.acc2vel_integrator->get_state());
+        self_collision_->constraints(sample_time_, G, h);
+        compound_chain_.ik->set_extra_constraints(G, h);
+    }
+
     for (CHAINS* chain : {&right_chain_, &left_chain_})
     {
         const bool right = chain == &right_chain_;
@@ -1132,6 +1248,15 @@ bool Module::solveIkAndUpdateIntegrators()
     {
         yError()<< "[" + module_name_ + "::solveIkAndUpdateIntegrators] Error: No value for the ik solution!";
         return false;
+    }
+
+    if (self_collision_)
+    {
+        yarp::sig::Vector &out = self_collision_port_.prepare();
+        out.resize(2);
+        out[0] = self_collision_->min_distance();
+        out[1] = compound_chain_.ik->braking() ? 2.0 : compound_chain_.ik->softened() ? 1.0 : 0.0;
+        self_collision_port_.write();
     }
 
     // Update integrators
