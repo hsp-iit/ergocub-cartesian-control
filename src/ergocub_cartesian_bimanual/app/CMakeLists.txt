@@ -16,6 +16,6 @@ subdirlist(subdirs ${CMAKE_CURRENT_SOURCE_DIR}/conf/)
 
 # Install configuration files
 foreach (dir ${subdirs})
-  file(GLOB scripts conf/${dir}/*.ini)
+  file(GLOB scripts conf/${dir}/*.ini conf/${dir}/*.txt)
   yarp_install(FILES ${scripts} DESTINATION ${YARP_CONTEXTS_INSTALL_DIR}/${EXE_TARGET_NAME}/${dir})
 endforeach ()

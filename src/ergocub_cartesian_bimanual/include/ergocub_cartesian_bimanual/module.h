@@ -27,6 +27,7 @@
 
 #include <ergocub_cartesian_bimanual/DifferentialInverseKinematicsQP.h>
 #include <ergocub_cartesian_bimanual/Integrator.h>
+#include <ergocub_cartesian_bimanual/SelfCollision.h>
 
 class Module : public yarp::os::RFModule
 {
@@ -115,6 +116,9 @@ private:
         std::unique_ptr<Integrator> vel2pos_integrator, acc2vel_integrator;
     }compound_chain_;
     std::optional<Eigen::VectorXd> qp_result_;
+    /* Self-collision avoidance (optional): QP constraints. The port publishes [smallest model distance [m], 0 ok | 1 softened | 2 braking]. */
+    std::unique_ptr<SelfCollision> self_collision_;
+    yarp::os::BufferedPort<yarp::sig::Vector> self_collision_port_{};
     void ikUpdate();
     void setDesiredTrajectory();
     bool solveIkAndUpdateIntegrators();
