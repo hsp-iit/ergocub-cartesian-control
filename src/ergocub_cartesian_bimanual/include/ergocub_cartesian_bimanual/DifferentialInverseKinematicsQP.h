@@ -113,6 +113,24 @@ public:
                              const Eigen::Ref<const Eigen::Vector3d> &desired_dir,
                              const Eigen::Ref<const Eigen::Vector3d> &local_dir);
 
+    /**
+     * Additional inequality constraints G ddq <= h for the next solve() only (e.g. self-collision avoidance).
+     * If they conflict with the joint limits they are softened (slack variables with a high cost).
+     */
+    void set_extra_constraints(const Eigen::Ref<const Eigen::MatrixXd> &G, const Eigen::Ref<const Eigen::VectorXd> &h);
+
+    /**
+     * Joint speed limits [rad/s] (QP order; infinity = none): |dq + ddq dt| <= max_vel, unless the joint limits
+     * require more.
+     */
+    void set_joint_max_velocity(const Eigen::Ref<const Eigen::VectorXd> &max_vel) { joints_max_vel_ = max_vel; }
+
+    /** True if the last solve() could not satisfy all the constraints and returned the braking acceleration. */
+    bool braking() const { return braking_; }
+
+    /** True if the last solve had to soften the extra constraints (they conflicted with the joint limits). */
+    bool softened() const { return softened_; }
+
     bool set_joint_limits(
         const Eigen::Ref<const Eigen::VectorXd> &lower_limits,
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
@@ -223,6 +241,17 @@ private:
     std::optional<Eigen::VectorXd> qp_results_;
 
     proxsuite::proxqp::Results<double> old_solution_;
+
+    Eigen::MatrixXd extra_G_;
+    Eigen::VectorXd extra_h_;
+    bool braking_ = false;
+    bool softened_ = false;
+    Eigen::VectorXd joints_max_vel_;
+    // Limits used by the QP: as set, except that a joint outside them (e.g. at start) gets back in without a jump.
+    Eigen::VectorXd joints_lower_eff_, joints_upper_eff_;
+    double extra_slack_weight_ = 1e6;
+    int failures_ = 0;
+    proxsuite::proxqp::QPSolverOutput last_status_ = proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED;
 
     Eigen::MatrixXd partial_derivative(const Eigen::MatrixXd &J, const unsigned int jointNum);
 

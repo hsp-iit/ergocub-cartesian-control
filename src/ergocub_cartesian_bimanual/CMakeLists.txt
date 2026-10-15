@@ -54,7 +54,9 @@ add_library(ergocub_cartesian_bimanual_core
   include/ergocub_cartesian_bimanual/Integrator.h
   include/ergocub_cartesian_bimanual/ForwardKinematics.h
   include/ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h
+  include/ergocub_cartesian_bimanual/SelfCollision.h
   src/DifferentialInverseKinematicsQP.cpp
+  src/SelfCollision.cpp
   src/Integrator.cpp
   src/ForwardKinematicsiDynTree.cpp
 )
