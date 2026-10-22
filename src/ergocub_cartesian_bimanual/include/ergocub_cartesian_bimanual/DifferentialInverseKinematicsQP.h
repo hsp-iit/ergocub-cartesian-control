@@ -86,6 +86,51 @@ public:
 
     void set_desired_ee_acceleration(const Eigen::Ref<const Eigen::Vector3d> &r_lin_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &r_ang_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &l_lin_acc = Eigen::Vector3d::Zero(), const Eigen::Ref<const Eigen::Vector3d> &l_ang_acc = Eigen::Vector3d::Zero());
 
+    /**
+     * Upper-arm direction task (optional, used to choose the elbow swivel).
+     * Gains are indexed [right, left]; a zero weight disables the task for that arm.
+     */
+    void set_arm_dir_params(const Eigen::Vector2d &weight, const Eigen::Vector2d &p_gain, const Eigen::Vector2d &d_gain);
+
+    /**
+     * Upper-arm state for the arm direction task, for one arm (right == true).
+     * @param rotation upper-arm link rotation in the root frame.
+     * @param ang_vel upper-arm link angular velocity in the root frame.
+     * @param jacobian 6 x (arm + torso) upper-arm jacobian (mixed representation), same columns as the hand jacobian.
+     * @param bias_acc 6D upper-arm bias acceleration.
+     */
+    void set_arm_dir_state(const bool right,
+                           const Eigen::Ref<const Eigen::Matrix3d> &rotation,
+                           const Eigen::Ref<const Eigen::Vector3d> &ang_vel,
+                           const Eigen::Ref<const Eigen::MatrixXd> &jacobian,
+                           const Eigen::Ref<const Eigen::VectorXd> &bias_acc);
+
+    /**
+     * Desired shoulder->elbow unit direction (root frame) for one arm; active == false disables the task
+     * for that arm (e.g. input timeout). local_dir is the same direction expressed in the upper-arm frame.
+     */
+    void set_desired_arm_dir(const bool right, const bool active,
+                             const Eigen::Ref<const Eigen::Vector3d> &desired_dir,
+                             const Eigen::Ref<const Eigen::Vector3d> &local_dir);
+
+    /**
+     * Additional inequality constraints G ddq <= h for the next solve() only (e.g. self-collision avoidance).
+     * If they conflict with the joint limits they are softened (slack variables with a high cost).
+     */
+    void set_extra_constraints(const Eigen::Ref<const Eigen::MatrixXd> &G, const Eigen::Ref<const Eigen::VectorXd> &h);
+
+    /**
+     * Joint speed limits [rad/s] (QP order; infinity = none): |dq + ddq dt| <= max_vel, unless the joint limits
+     * require more.
+     */
+    void set_joint_max_velocity(const Eigen::Ref<const Eigen::VectorXd> &max_vel) { joints_max_vel_ = max_vel; }
+
+    /** True if the last solve() could not satisfy all the constraints and returned the braking acceleration. */
+    bool braking() const { return braking_; }
+
+    /** True if the last solve had to soften the extra constraints (they conflicted with the joint limits). */
+    bool softened() const { return softened_; }
+
     bool set_joint_limits(
         const Eigen::Ref<const Eigen::VectorXd> &lower_limits,
         const Eigen::Ref<const Eigen::VectorXd> &upper_limits,
@@ -180,9 +225,33 @@ private:
     Eigen::Vector3d left_desired_lin_vel_, left_desired_ang_vel_, left_desired_lin_acc_, left_desired_ang_acc_;
     Eigen::MatrixXd J_pos_, J_ori_;
 
+    /* Upper-arm direction task, [0] right, [1] left. */
+    struct ArmDir
+    {
+        bool active = false;
+        Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+        Eigen::Vector3d ang_vel = Eigen::Vector3d::Zero();
+        Eigen::MatrixXd jacobian;
+        Eigen::VectorXd bias_acc = Eigen::VectorXd::Zero(6);
+        Eigen::Vector3d desired = Eigen::Vector3d::UnitX();
+        Eigen::Vector3d local = Eigen::Vector3d::UnitX();
+    } arm_dir_[2];
+    Eigen::Vector2d arm_dir_weight_ = Eigen::Vector2d::Zero(), arm_dir_p_gain_ = Eigen::Vector2d::Zero(), arm_dir_d_gain_ = Eigen::Vector2d::Zero();
+
     std::optional<Eigen::VectorXd> qp_results_;
 
     proxsuite::proxqp::Results<double> old_solution_;
+
+    Eigen::MatrixXd extra_G_;
+    Eigen::VectorXd extra_h_;
+    bool braking_ = false;
+    bool softened_ = false;
+    Eigen::VectorXd joints_max_vel_;
+    // Limits used by the QP: as set, except that a joint outside them (e.g. at start) gets back in without a jump.
+    Eigen::VectorXd joints_lower_eff_, joints_upper_eff_;
+    double extra_slack_weight_ = 1e6;
+    int failures_ = 0;
+    proxsuite::proxqp::QPSolverOutput last_status_ = proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED;
 
     Eigen::MatrixXd partial_derivative(const Eigen::MatrixXd &J, const unsigned int jointNum);
 

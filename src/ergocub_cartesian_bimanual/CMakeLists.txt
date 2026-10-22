@@ -21,6 +21,14 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                              idl_tools
                              eigen
   )
+
+  # WalkingControllers (optional): enables retargeting of the joint references to the walking-controller
+  find_package(WalkingControllers QUIET)
+  option(BIMANUAL_WITH_WALKING_RETARGETING "Enable retargeting of the joint references to the walking-controller" ${WalkingControllers_FOUND})
+  if(BIMANUAL_WITH_WALKING_RETARGETING AND NOT WalkingControllers_FOUND)
+    message(FATAL_ERROR "BIMANUAL_WITH_WALKING_RETARGETING is ON but WalkingControllers was not found.")
+  endif()
+  message(STATUS "${EXE_TARGET_NAME}: walking-controller retargeting ${BIMANUAL_WITH_WALKING_RETARGETING}")
 endif()
 
 # Eigen3
@@ -46,7 +54,9 @@ add_library(ergocub_cartesian_bimanual_core
   include/ergocub_cartesian_bimanual/Integrator.h
   include/ergocub_cartesian_bimanual/ForwardKinematics.h
   include/ergocub_cartesian_bimanual/ForwardKinematicsiDynTree.h
+  include/ergocub_cartesian_bimanual/SelfCollision.h
   src/DifferentialInverseKinematicsQP.cpp
+  src/SelfCollision.cpp
   src/Integrator.cpp
   src/ForwardKinematicsiDynTree.cpp
 )
@@ -100,6 +110,11 @@ if(BUILD_BIMANUAL_EXECUTABLE)
                                            cub-joint-control
                                            utils
   )
+
+  if(BIMANUAL_WITH_WALKING_RETARGETING)
+    target_link_libraries(${EXE_TARGET_NAME} PRIVATE WalkingControllers::HumanState)
+    target_compile_definitions(${EXE_TARGET_NAME} PRIVATE BIMANUAL_WITH_WALKING_RETARGETING)
+  endif()
 
   # YARP logging is always enabled via includes; no special defines needed
 

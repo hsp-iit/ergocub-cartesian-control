@@ -14,6 +14,9 @@
 
 #include <Eigen/Dense>
 
+#include <cmath>
+#include <cstdlib>
+
 using namespace proxsuite::proxqp;
 
 DifferentialInverseKinematicsQP::DifferentialInverseKinematicsQP(
@@ -195,6 +198,8 @@ bool DifferentialInverseKinematicsQP::set_joint_limits(
 
     joints_lower_limits_ = lower_limits;
     joints_upper_limits_ = upper_limits;
+    joints_lower_eff_.resize(0);
+    joints_upper_eff_.resize(0);
 
     auto gain_at = [&](int i, double def) -> double {
         return (i < gains.size()) ? gains(i) : def;
@@ -296,6 +301,40 @@ void DifferentialInverseKinematicsQP::set_desired_ee_acceleration(const Eigen::R
     left_desired_ang_acc_ = l_ang_acc;
 }
 
+void DifferentialInverseKinematicsQP::set_arm_dir_params(const Eigen::Vector2d &weight, const Eigen::Vector2d &p_gain, const Eigen::Vector2d &d_gain)
+{
+    arm_dir_weight_ = weight;
+    arm_dir_p_gain_ = p_gain;
+    arm_dir_d_gain_ = d_gain;
+}
+
+
+void DifferentialInverseKinematicsQP::set_arm_dir_state(const bool right,
+                                                        const Eigen::Ref<const Eigen::Matrix3d> &rotation,
+                                                        const Eigen::Ref<const Eigen::Vector3d> &ang_vel,
+                                                        const Eigen::Ref<const Eigen::MatrixXd> &jacobian,
+                                                        const Eigen::Ref<const Eigen::VectorXd> &bias_acc)
+{
+    ArmDir &a = arm_dir_[right ? 0 : 1];
+    a.rotation = rotation;
+    a.ang_vel = ang_vel;
+    a.jacobian = jacobian;
+    a.bias_acc = bias_acc;
+}
+
+
+void DifferentialInverseKinematicsQP::set_desired_arm_dir(const bool right, const bool active,
+                                                          const Eigen::Ref<const Eigen::Vector3d> &desired_dir,
+                                                          const Eigen::Ref<const Eigen::Vector3d> &local_dir)
+{
+    ArmDir &a = arm_dir_[right ? 0 : 1];
+    a.active = active && desired_dir.norm() > 1e-6;
+    if (a.active)
+        a.desired = desired_dir.normalized();
+    a.local = local_dir.normalized();
+}
+
+
 std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
 {
     /* --- J_pos_ / J_ori_ con copia sicura (gestisce catene disattive) --- */
@@ -368,6 +407,33 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
         q += -2.0 * J_ori_.transpose() * W_ang_cart_ * ang_ref;
     }
 
+    // Upper-arm direction: d = R_ua * d_local must point along d_des. Only the angular acceleration
+    // perpendicular to d moves it, so the task is projected on that plane (the rotation about the
+    // upper-arm axis stays free for the hand orientation).
+    for (int side = 0; side < 2; side++)
+    {
+        const ArmDir &a = arm_dir_[side];
+        const int n_arm = side == 0 ? nr : nl;
+        if (!a.active || arm_dir_weight_(side) <= 0.0 || n_arm == 0 || a.jacobian.cols() < n_arm + nt)
+            continue;
+
+        Eigen::MatrixXd J_ang = Eigen::MatrixXd::Zero(3, N);
+        const int c_arm = side == 0 ? 0 : nr;
+        J_ang.middleCols(c_arm, n_arm) = a.jacobian.block(3, 0, 3, n_arm);
+        if (nt > 0)
+            J_ang.middleCols(nr + nl, nt) = a.jacobian.block(3, n_arm, 3, nt);
+
+        const Eigen::Vector3d d = (a.rotation * a.local).normalized();
+        const Eigen::Matrix3d perp = Eigen::Matrix3d::Identity() - d * d.transpose();
+        const Eigen::Vector3d e = d.cross(a.desired);   // axis * sin(angle), already perpendicular to d
+        const Eigen::Vector3d ref = arm_dir_p_gain_(side) * e - arm_dir_d_gain_(side) * (perp * a.ang_vel)
+                                    - perp * a.bias_acc.tail<3>();
+        const Eigen::MatrixXd A = perp * J_ang;
+
+        P += arm_dir_weight_(side) * A.transpose() * A;
+        q += -2.0 * arm_dir_weight_(side) * A.transpose() * ref;
+    }
+
     // Joint posture (PD)
     {
         const Eigen::VectorXd des_joints_vel = Eigen::VectorXd::Zero(N);
@@ -383,11 +449,104 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve()
     /* --- Add limiter contribution to the constraint --- */
     Eigen::MatrixXd G_limiter;
     Eigen::VectorXd h_limiter;
-    std::tie(G_limiter, h_limiter) = limit_constraint(joints_, joints_lower_limits_, joints_upper_limits_, joints_limits_gains_);
+    // A joint outside its limits (e.g. limits tighter than the starting pose) may not get back in faster than the
+    // limits push it: the effective limit follows the joint until it is reached.
+    if (joints_lower_eff_.size() != N)
+    {
+        joints_lower_eff_ = joints_lower_limits_.cwiseMin(joints_);
+        joints_upper_eff_ = joints_upper_limits_.cwiseMax(joints_);
+    }
+    joints_lower_eff_ = joints_lower_limits_.cwiseMin(joints_lower_eff_.cwiseMax(joints_));
+    joints_upper_eff_ = joints_upper_limits_.cwiseMax(joints_upper_eff_.cwiseMin(joints_));
+    std::tie(G_limiter, h_limiter) = limit_constraint(joints_, joints_lower_eff_, joints_upper_eff_, joints_limits_gains_);
+
+    // Joint speed after the step, |dq + ddq dt| <= max_vel, unless the joint limits require more: it tightens the
+    // joint limit rows (one box per joint, ddq <= h_upper and -ddq <= h_lower).
+    const int n_limits = 2 * N;
+    if (joints_max_vel_.size() == N)
+        for (int i = 0; i < N; i++)
+            if (std::isfinite(joints_max_vel_(i)))
+            {
+                const double vmax = joints_max_vel_(i);
+                // the joint limit rows bound ddq to [-h_limiter(N + i), h_limiter(i)]
+                const double ddq_up = std::max((vmax - joints_vel_(i)) / sampling_time_, -h_limiter(N + i));
+                const double ddq_low = std::min((-vmax - joints_vel_(i)) / sampling_time_, h_limiter(i));
+                h_limiter(i) = std::min(h_limiter(i), ddq_up);
+                h_limiter(N + i) = std::min(h_limiter(N + i), -ddq_low);
+            }
 
     /* --- QP Resolution --- */
-    qp_results_ = solve_qp(P, q, G_limiter, h_limiter);
+    // Joint limits (first n_limits rows: position, speed), manipulability, then the extra constraints (self-collision).
+    auto stack = [&](const Eigen::MatrixXd &G_a, const Eigen::VectorXd &h_a) {
+        if (extra_G_.rows() == 0 || extra_G_.cols() != N)
+            return std::make_pair(G_a, h_a);
+        Eigen::MatrixXd G(G_a.rows() + extra_G_.rows(), N);
+        Eigen::VectorXd h(h_a.size() + extra_h_.size());
+        G << G_a, extra_G_;
+        h << h_a, extra_h_;
+        return std::make_pair(G, h);
+    };
+
+    braking_ = false;
+    softened_ = false;
+    auto [G, h] = stack(G_limiter, h_limiter);
+    qp_results_ = solve_qp(P, q, G, h);
+
+    // The extra rows may conflict with the joint limits (or the manipulability rows): keep the limits hard and
+    // let the extra rows give way, through slack variables s >= 0 with a high cost, as little as needed.
+    auto solve_softened = [&](const Eigen::MatrixXd &G_a, const Eigen::VectorXd &h_a) -> std::optional<Eigen::VectorXd> {
+        const int m = extra_G_.rows();
+        Eigen::MatrixXd P_s = Eigen::MatrixXd::Zero(N + m, N + m);
+        Eigen::VectorXd q_s = Eigen::VectorXd::Zero(N + m);
+        P_s.topLeftCorner(N, N) = P;
+        P_s.bottomRightCorner(m, m).diagonal().setConstant(extra_slack_weight_);
+        q_s.head(N) = q;
+        Eigen::MatrixXd G_s = Eigen::MatrixXd::Zero(G_a.rows() + 2 * m, N + m);
+        Eigen::VectorXd h_s = Eigen::VectorXd::Zero(G_a.rows() + 2 * m);
+        G_s.topLeftCorner(G_a.rows(), N) = G_a;
+        h_s.head(G_a.rows()) = h_a;
+        G_s.block(G_a.rows(), 0, m, N) = extra_G_;
+        G_s.block(G_a.rows(), N, m, m) = -Eigen::MatrixXd::Identity(m, m);
+        h_s.segment(G_a.rows(), m) = extra_h_;
+        G_s.bottomRightCorner(m, m) = -Eigen::MatrixXd::Identity(m, m);
+        const auto x = solve_qp(P_s, q_s, G_s, h_s);
+        if (!x.has_value())
+            return {};
+        return Eigen::VectorXd(x->head(N));
+    };
+    const bool has_extra = extra_G_.rows() > 0 && extra_G_.cols() == N;
+    if (!qp_results_.has_value() && has_extra)
+    {
+        softened_ = true;
+        qp_results_ = solve_softened(G_limiter, h_limiter);
+        if (!qp_results_.has_value() && G_limiter.rows() > n_limits)
+            qp_results_ = solve_softened(G_limiter.topRows(n_limits), h_limiter.head(n_limits));
+        if (std::getenv("SC_DEBUG"))
+            yWarning() << class_name_ + "::solve(). QP infeasible with the extra constraints, softened them:" << (qp_results_.has_value() ? "solved" : "not solved");
+    }
+    if (!qp_results_.has_value() && G_limiter.rows() > n_limits)
+    {
+        // The manipulability constraints may conflict with the joint limits: drop them.
+        qp_results_ = solve_qp(P, q, G_limiter.topRows(n_limits), h_limiter.head(n_limits));
+    }
+    if (!qp_results_.has_value())
+    {
+        // Brake: zero velocity after the step keeps the current (feasible) configuration.
+        braking_ = true;
+        qp_results_ = Eigen::VectorXd(-joints_vel_ / sampling_time_);
+        old_solution_ = proxsuite::proxqp::Results<double>();
+        if (failures_++ % 100 == 0 || std::getenv("SC_DEBUG"))
+            yWarning() << class_name_ + "::solve(). QP not solved (proxqp status" << static_cast<int>(last_status_) << "), braking (" << failures_ << "times so far).";
+    }
+    extra_G_.resize(0, N);
+    extra_h_.resize(0);
     return qp_results_;
+}
+
+void DifferentialInverseKinematicsQP::set_extra_constraints(const Eigen::Ref<const Eigen::MatrixXd> &G, const Eigen::Ref<const Eigen::VectorXd> &h)
+{
+    extra_G_ = G;
+    extra_h_ = h;
 }
 
 std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve_qp(
@@ -399,11 +558,13 @@ std::optional<Eigen::VectorXd> DifferentialInverseKinematicsQP::solve_qp(
     dense::QP<double> solver(P.rows(), 0, G.rows());
     solver.init(P, q, proxsuite::nullopt, proxsuite::nullopt, G, proxsuite::nullopt, h);
 
-    if (old_solution_.x.size() == 0)
-        solver.solve();
-    else
+    // Warm start only with the same constraints (the self-collision rows change from step to step).
+    if (old_solution_.x.size() == P.rows() && old_solution_.z.size() == G.rows())
         solver.solve(old_solution_.x, old_solution_.y, old_solution_.z);
+    else
+        solver.solve();
 
+    last_status_ = solver.results.info.status;
     if (solver.results.info.status == QPSolverOutput::PROXQP_SOLVED)
     {
         old_solution_ = solver.results;
