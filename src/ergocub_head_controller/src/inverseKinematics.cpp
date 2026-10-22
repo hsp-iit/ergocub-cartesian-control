@@ -87,6 +87,11 @@ void InverseKinematics::update()
     u.head(q_a_.size()) = ik_parameters_.gain_limits() * (q_a_lim_u_ - q_a_) / sample_time_;
     u.tail(q_a_.size()) = -1.0 * ik_parameters_.gain_limits() * (q_a_lim_l_ - q_a_) / sample_time_;
 
+    /* Saturate the joints velocity, so that far targets (e.g. goHome) do not result in large steps of the position direct references.
+       Bounds are clamped in [-max_vel, max_vel] on both sides to keep the problem feasible even if a joint is beyond its limits. */
+    const double max_vel = ik_parameters_.max_vel();
+    u = u.cwiseMax(-max_vel).cwiseMin(max_vel);
+
     /* Initialize the solver. */
     solver_->init(H, g, proxsuite::nullopt, proxsuite::nullopt, C, proxsuite::nullopt, u);
 

@@ -18,8 +18,11 @@ public:
 
     double gain_limits() const;
 
+    /* Maximum joints velocity in rad/s (configured in deg/s). */
+    double max_vel() const;
+
 private:
-    double p_gain_, weight_vel_, gain_limits_;
+    double p_gain_, weight_vel_, gain_limits_, max_vel_;
 };
 
 #endif /* INVERSE_KINEMATICS_PARAMETERS_H */
