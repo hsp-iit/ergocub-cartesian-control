@@ -21,6 +21,22 @@ IDENTITY_QUATERNION_WXYZ = [1.0, 0.0, 0.0, 0.0]
 
 
 def import_yarp():
+    import importlib.util
+    import re
+
+    spec = importlib.util.find_spec("yarp")
+    if spec is not None and spec.origin:
+        version_match = re.search(r"python(\d+\.\d+)", spec.origin)
+        expected_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        if version_match and version_match.group(1) != expected_version:
+            print(
+                f"YARP Python bindings at {spec.origin} are not compatible with "
+                f"Python {expected_version}. "
+                "Use the Python version used to build YARP.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     try:
         import yarp
     except ImportError:

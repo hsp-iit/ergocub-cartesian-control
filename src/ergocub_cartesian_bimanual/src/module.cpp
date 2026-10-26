@@ -446,6 +446,12 @@ bool Module::configure(yarp::os::ResourceFinder &rf)
 
     #ifdef LOGGING_RERUN
     logger_ = std::make_unique<rerun::RecordingStream>(module_name_);
+    const auto rerun_status = logger_->connect_grpc();
+    if (rerun_status.is_err())
+    {
+        yError() << "[" + module_name_ + "::" + __func__ + "] Could not connect to Rerun viewer: "
+                 << rerun_status.description;
+    }
 
     auto jointSeriesNames = [] (const std::vector<std::string>& jointNames)
     {
@@ -789,13 +795,17 @@ bool Module::checkAndReadNewInputs()
     */
     auto setPoseMat = [&](bool right, const Eigen::VectorXd& pose)
     {
+        Eigen::Matrix3d rotation;
+        rotation << pose[3], pose[4], pose[5],
+                    pose[6], pose[7], pose[8],
+                    pose[9], pose[10], pose[11];
         if (right) {
             right_desired_pose_ = Eigen::Translation3d(pose.head(3));
-            right_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+            right_desired_pose_.rotate(rotation);
         }
         else {
             left_desired_pose_ = Eigen::Translation3d(pose.head(3));
-            left_desired_pose_.rotate(Eigen::Matrix3d(pose.tail(9).reshaped(3,3)));
+            left_desired_pose_.rotate(rotation);
         }
     };
 
